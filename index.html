@@ -388,7 +388,7 @@ When given a SEARCH query, output a single JSON object (no markdown, no explanat
 {"keywords":["main search terms"],"filters":{"jurisdiction":[],"court":[],"offenceTypes":[],"topics":[],"areaOfLaw":[]},"vectorQuery":"natural-language string optimised for embedding search","notesForDeveloper":["Example Firestore filter notes"]}`;
 
 async function callClaude(userMessage) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetch("https://apm-proxy.abrammeredith.workers.dev", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

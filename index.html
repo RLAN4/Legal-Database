@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>APM Legal Database</title>
+
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- PDF.js for PDF parsing -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+<!-- Mammoth.js for Word doc parsing -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Mono:wght@300;400;500&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+
+<style>
+  * { box-sizing: border-box; }
+  body { background: #0c0b09; font-family: 'DM Mono', monospace; margin: 0; }
+  .font-display { font-family: 'Playfair Display', Georgia, serif; }
+  .font-body    { font-family: 'Libre Baskerville', Georgia, serif; }
+  .font-mono    { font-family: 'DM Mono', monospace; }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #1c1917; }
+  ::-webkit-scrollbar-thumb { background: #57534e; border-radius: 3px; }
+
+  textarea { resize: vertical; font-family: 'Libre Baskerville', Georgia, serif; }
+
+  @keyframes toastIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+  .toast-enter { animation: toastIn 0.3s ease; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { animation: spin 1s linear infinite; display: inline-block; }
+
+  .tab-btn { padding: 10px 16px; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 2px solid transparent; color: #78716c; cursor: pointer; background: none; border-top: none; border-left: none; border-right: none; transition: color 0.2s; }
+  .tab-btn:hover { color: #a8a29e; }
+  .tab-btn.active { border-bottom-color: #d97706; color: #fde68a; }
+
+  .tag { display: inline-block; padding: 2px 8px; font-size: 11px; border-radius: 3px; font-family: 'DM Mono', monospace; letter-spacing: 0.04em; border: 1px solid; }
+  .tag-amber { background: rgba(120,53,15,0.3); color: #fcd34d; border-color: rgba(180,83,9,0.4); }
+  .tag-red   { background: rgba(127,29,29,0.3); color: #fca5a5; border-color: rgba(185,28,28,0.4); }
+  .tag-blue  { background: rgba(23,37,84,0.3);  color: #93c5fd; border-color: rgba(29,78,216,0.4); }
+  .tag-green { background: rgba(6,46,26,0.3);   color: #6ee7b7; border-color: rgba(4,120,87,0.4); }
+
+  .card { border: 1px solid rgba(87,83,78,0.5); background: rgba(28,25,23,0.6); border-radius: 4px; padding: 20px; cursor: pointer; transition: all 0.25s; }
+  .card:hover { background: rgba(41,37,36,0.8); border-color: rgba(180,83,9,0.4); }
+
+  .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+  .btn-primary { width: 100%; padding: 12px; background: rgba(120,53,15,0.3); border: 1px solid rgba(180,83,9,0.5); color: #fcd34d; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; border-radius: 4px; transition: all 0.2s; }
+  .btn-primary:hover:not(:disabled) { background: rgba(146,64,14,0.4); border-color: rgba(217,119,6,0.6); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-secondary { width: 100%; padding: 12px; background: rgba(41,37,36,0.6); border: 1px solid rgba(87,83,78,0.5); color: #d6d3d1; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; border-radius: 4px; transition: all 0.2s; }
+  .btn-secondary:hover:not(:disabled) { background: rgba(68,64,60,0.7); }
+  .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .input-area { width: 100%; background: rgba(28,25,23,0.6); border: 1px solid rgba(87,83,78,0.5); border-radius: 4px; padding: 16px; color: #d6d3d1; font-size: 14px; line-height: 1.7; outline: none; transition: border-color 0.2s; }
+  .input-area:focus { border-color: rgba(180,83,9,0.5); }
+  .input-area::placeholder { color: #57534e; }
+
+  .modal-overlay { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); display: flex; align-items: flex-start; justify-content: flex-end; padding: 16px; }
+  .modal-panel { width: 100%; max-width: 680px; height: 100%; overflow-y: auto; background: #0c0b09; border: 1px solid #57534e; border-radius: 4px; scrollbar-width: thin; scrollbar-color: #78716c #1c1917; }
+
+  .drop-zone { border: 2px dashed rgba(87,83,78,0.5); border-radius: 4px; padding: 32px; text-align: center; transition: all 0.2s; cursor: pointer; }
+  .drop-zone:hover, .drop-zone.drag-over { border-color: rgba(180,83,9,0.6); background: rgba(120,53,15,0.1); }
+
+  .section-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #78716c; margin-bottom: 8px; font-family: 'DM Mono', monospace; }
+  .divider { border-color: rgba(68,64,60,0.5); margin: 0; }
+
+  pre { white-space: pre-wrap; word-break: break-word; }
+
+  /* Header sticky */
+  .sticky-header { position: sticky; top: 0; z-index: 40; backdrop-filter: blur(8px); background: rgba(12,11,9,0.92); border-bottom: 1px solid #292524; }
+</style>
+</head>
+<body>
+
+<!-- Toast -->
+<div id="toast" style="display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:100; padding:10px 18px; border-radius:4px; font-size:13px; box-shadow:0 4px 24px rgba(0,0,0,0.5);" class="toast-enter font-mono"></div>
+
+<!-- Detail Modal -->
+<div id="modal" class="modal-overlay" style="display:none;" onclick="closeModal(event)">
+  <div class="modal-panel" onclick="event.stopPropagation()">
+    <div style="position:sticky;top:0;background:rgba(12,11,9,0.95);backdrop-filter:blur(8px);border-bottom:1px solid #292524;padding:20px 24px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+      <div>
+        <h2 id="modal-title" class="font-display" style="color:#fde68a;font-size:18px;line-height:1.3;"></h2>
+        <p id="modal-meta" class="font-mono" style="color:#78716c;font-size:11px;margin-top:4px;"></p>
+        <p id="modal-fsid" class="font-mono" style="color:#059669;font-size:10px;margin-top:2px;"></p>
+      </div>
+      <button onclick="document.getElementById('modal').style.display='none'" style="color:#78716c;background:none;border:none;font-size:22px;cursor:pointer;line-height:1;margin-top:2px;">×</button>
+    </div>
+    <div id="modal-body" style="padding:24px;"></div>
+  </div>
+</div>
+
+<!-- Header -->
+<div class="sticky-header">
+  <div style="max-width:1152px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="width:32px;height:32px;border:1px solid rgba(180,83,9,0.5);display:flex;align-items:center;justify-content:center;border-radius:3px;">
+        <span style="color:#f59e0b;font-size:16px;">⚖</span>
+      </div>
+      <div>
+        <h1 class="font-display" style="color:#fde68a;font-size:18px;line-height:1;">APM Legal Database</h1>
+        <p class="font-mono" style="color:#44403c;font-size:10px;letter-spacing:0.12em;margin-top:2px;">NSW CRIMINAL LAW · FIRESTORE</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div id="db-status-dot" style="width:8px;height:8px;border-radius:50%;background:#374151;"></div>
+      <span id="db-status-text" class="font-mono" style="color:#57534e;font-size:11px;">Connecting…</span>
+    </div>
+  </div>
+</div>
+
+<!-- Main -->
+<div style="max-width:1152px;margin:0 auto;padding:32px 24px;">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;">
+
+    <!-- LEFT PANEL -->
+    <div>
+      <!-- Tabs -->
+      <div style="display:flex;border-bottom:1px solid #292524;margin-bottom:20px;">
+        <button class="tab-btn active" id="tab-ingest" onclick="switchTab('ingest')">↓ Ingest</button>
+        <button class="tab-btn" id="tab-search" onclick="switchTab('search')">⌕ Search</button>
+      </div>
+
+      <!-- INGEST PANEL -->
+      <div id="panel-ingest">
+        <p class="font-mono" style="color:#78716c;font-size:11px;line-height:1.7;margin-bottom:16px;">
+          Upload a PDF or Word document, or paste text directly. The AI will extract structured data and save it to Firestore.
+        </p>
+
+        <!-- Upload zone -->
+        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()"
+          ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+          <input type="file" id="file-input" accept=".pdf,.doc,.docx" style="display:none;" onchange="handleFileSelect(event)" />
+          <div style="color:#57534e;font-size:28px;margin-bottom:8px;">📄</div>
+          <p class="font-mono" style="color:#78716c;font-size:12px;">Drop a PDF or Word doc here</p>
+          <p class="font-mono" style="color:#44403c;font-size:11px;margin-top:4px;">or click to browse</p>
+          <div id="file-name" style="display:none;margin-top:10px;padding:6px 12px;background:rgba(120,53,15,0.2);border:1px solid rgba(180,83,9,0.3);border-radius:3px;color:#fcd34d;font-size:11px;" class="font-mono"></div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:10px;margin:12px 0;">
+          <hr class="divider" style="flex:1;" />
+          <span class="font-mono" style="color:#44403c;font-size:10px;">OR PASTE TEXT</span>
+          <hr class="divider" style="flex:1;" />
+        </div>
+
+        <textarea id="ingest-text" class="input-area" style="min-height:180px;" placeholder="Paste case text here — e.g. R v Smith [2003] NSWCCA 123..."></textarea>
+
+        <div style="margin-top:10px;">
+          <button class="btn-primary" id="ingest-btn" onclick="handleIngest()" disabled>
+            Analyse &amp; Save to Firestore →
+          </button>
+        </div>
+
+        <div id="ingest-progress" style="display:none;margin-top:10px;padding:10px 14px;background:rgba(28,25,23,0.8);border:1px solid #292524;border-radius:4px;">
+          <p class="font-mono" style="color:#78716c;font-size:11px;" id="progress-text">⟳ Processing…</p>
+        </div>
+      </div>
+
+      <!-- SEARCH PANEL -->
+      <div id="panel-search" style="display:none;">
+        <p class="font-mono" style="color:#78716c;font-size:11px;line-height:1.7;margin-bottom:16px;">
+          Describe what you're looking for. The AI will generate structured Firestore query parameters and a semantic vector query.
+        </p>
+        <textarea id="search-text" class="input-area" style="min-height:140px;" placeholder="e.g. NSW sentencing cases on objective seriousness for armed robbery where standard non-parole period applied..."></textarea>
+        <div style="margin-top:10px;">
+          <button class="btn-secondary" id="search-btn" onclick="handleSearch()">Generate Query →</button>
+        </div>
+        <div id="search-result" style="display:none;margin-top:16px;"></div>
+      </div>
+
+      <!-- Error -->
+      <div id="error-box" style="display:none;margin-top:12px;padding:10px 14px;border:1px solid rgba(153,27,27,0.5);background:rgba(69,10,10,0.3);border-radius:4px;">
+        <p class="font-mono" style="color:#fca5a5;font-size:11px;" id="error-text"></p>
+      </div>
+
+      <!-- Schema reference -->
+      <div style="margin-top:24px;border:1px solid rgba(41,37,36,0.8);background:rgba(28,25,23,0.3);border-radius:4px;padding:16px;">
+        <p class="section-label">Firestore Collection</p>
+        <p class="font-mono" style="color:#92400e;font-size:11px;margin-bottom:12px;">apm-legal-database › cases › {autoId}</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;">
+          <!-- fields filled by JS -->
+        </div>
+        <div id="schema-fields" style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #292524;padding-bottom:10px;margin-bottom:16px;">
+        <p class="section-label" style="margin-bottom:0;">Knowledge Base</p>
+        <button id="export-btn" onclick="exportJSON()" style="display:none;color:#57534e;background:none;border:none;font-size:11px;cursor:pointer;font-family:'DM Mono',monospace;transition:color 0.2s;" onmouseover="this.style.color='#f59e0b'" onmouseout="this.style.color='#57534e'">↓ Export JSON</button>
+      </div>
+      <div id="cases-list">
+        <div style="border:1px dashed rgba(41,37,36,0.6);border-radius:4px;padding:40px;text-align:center;" id="empty-state">
+          <p class="font-display" style="color:#292524;font-size:15px;font-style:italic;">No cases in database yet.</p>
+          <p class="font-mono" style="color:#292524;font-size:11px;margin-top:8px;">Upload a document and click Analyse & Save →</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── Config ─────────────────────────────────────────────────────
+const PROJECT_ID = "apm-legal-database";
+const COLLECTION = "cases";
+const API_KEY    = "AIzaSyAtRaBvfTbme3tm4bZfWbcV4FOBosdCtnc";
+const FS_BASE    = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+
+// PDF.js worker
+if (typeof pdfjsLib !== "undefined") {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+}
+
+// ── State ──────────────────────────────────────────────────────
+let cases = [];
+let currentFileText = "";
+let activeTab = "ingest";
+
+// ── Schema fields ──────────────────────────────────────────────
+const SCHEMA_FIELDS = ["title","citation","court","jurisdiction","decisionDate","parties","legalIssues","legalPrinciples","statutesCited","casesCited","outcome","conciseSummary","detailedSummary","quotes","offenceTypes","topics","areaOfLaw","courtLevel","relevanceNotes","embeddingInput","createdAt"];
+
+document.getElementById("schema-fields").innerHTML = SCHEMA_FIELDS.map(f =>
+  `<p class="font-mono" style="color:#44403c;font-size:11px;">· ${f}</p>`
+).join("");
+
+// ── Firestore REST ─────────────────────────────────────────────
+function toFsValue(val) {
+  if (val === null || val === undefined) return { nullValue: null };
+  if (typeof val === "boolean") return { booleanValue: val };
+  if (typeof val === "number")  return { doubleValue: val };
+  if (typeof val === "string")  return { stringValue: val };
+  if (Array.isArray(val)) return { arrayValue: { values: val.map(toFsValue) } };
+  if (typeof val === "object") {
+    const fields = {};
+    for (const [k,v] of Object.entries(val)) fields[k] = toFsValue(v);
+    return { mapValue: { fields } };
+  }
+  return { stringValue: String(val) };
+}
+
+function fromFsValue(val) {
+  if (!val) return null;
+  if ("stringValue"  in val) return val.stringValue;
+  if ("integerValue" in val) return Number(val.integerValue);
+  if ("doubleValue"  in val) return val.doubleValue;
+  if ("booleanValue" in val) return val.booleanValue;
+  if ("nullValue"    in val) return null;
+  if ("timestampValue" in val) return val.timestampValue;
+  if ("arrayValue"   in val) return (val.arrayValue.values || []).map(fromFsValue);
+  if ("mapValue"     in val) {
+    const obj = {};
+    for (const [k,v] of Object.entries(val.mapValue.fields || {})) obj[k] = fromFsValue(v);
+    return obj;
+  }
+  return null;
+}
+
+function fsDocToObj(doc) {
+  const obj = { _firestoreId: doc.name.split("/").pop() };
+  for (const [k,v] of Object.entries(doc.fields || {})) obj[k] = fromFsValue(v);
+  return obj;
+}
+
+async function saveToFirestore(data) {
+  const fields = {};
+  for (const [k,v] of Object.entries(data)) fields[k] = toFsValue(v);
+  fields.createdAt = { timestampValue: new Date().toISOString() };
+  const res = await fetch(`${FS_BASE}/${COLLECTION}?key=${API_KEY}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fields }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const doc = await res.json();
+  return doc.name.split("/").pop();
+}
+
+async function loadFromFirestore() {
+  const res = await fetch(`${FS_BASE}/${COLLECTION}?key=${API_KEY}&pageSize=200`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return (data.documents || []).map(fsDocToObj);
+}
+
+// ── Init load ──────────────────────────────────────────────────
+(async () => {
+  try {
+    cases = await loadFromFirestore();
+    setDbStatus(true, cases.length);
+    renderCases();
+  } catch(e) {
+    setDbStatus(false, 0);
+  }
+})();
+
+function setDbStatus(ok, count) {
+  const dot  = document.getElementById("db-status-dot");
+  const text = document.getElementById("db-status-text");
+  dot.style.background  = ok ? "#10b981" : "#ef4444";
+  text.textContent = ok ? `${count} case${count !== 1 ? "s" : ""} in database` : "Connection error";
+}
+
+// ── File parsing ───────────────────────────────────────────────
+async function extractTextFromPDF(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let text = "";
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    text += content.items.map(item => item.str).join(" ") + "\n\n";
+  }
+  return text.trim();
+}
+
+async function extractTextFromDocx(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const result = await mammoth.extractRawText({ arrayBuffer });
+  return result.value.trim();
+}
+
+async function handleFileSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  await processFile(file);
+}
+
+async function processFile(file) {
+  const nameEl = document.getElementById("file-name");
+  nameEl.textContent = "⟳ Reading " + file.name + "…";
+  nameEl.style.display = "block";
+  currentFileText = "";
+
+  try {
+    if (file.name.endsWith(".pdf")) {
+      currentFileText = await extractTextFromPDF(file);
+    } else if (file.name.endsWith(".docx") || file.name.endsWith(".doc")) {
+      currentFileText = await extractTextFromDocx(file);
+    } else {
+      showError("Unsupported file type. Please upload a PDF or Word document (.docx).");
+      nameEl.style.display = "none";
+      return;
+    }
+    nameEl.textContent = "✓ " + file.name + " (" + Math.round(currentFileText.length / 1000) + "k chars extracted)";
+    document.getElementById("ingest-btn").disabled = false;
+    hideError();
+  } catch(e) {
+    nameEl.style.display = "none";
+    showError("Could not read file: " + e.message);
+  }
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById("drop-zone").classList.add("drag-over");
+}
+function handleDragLeave(e) {
+  document.getElementById("drop-zone").classList.remove("drag-over");
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById("drop-zone").classList.remove("drag-over");
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+
+// Also enable ingest button when text is typed
+document.getElementById("ingest-text").addEventListener("input", function() {
+  document.getElementById("ingest-btn").disabled = !this.value.trim() && !currentFileText;
+});
+
+// ── Claude API ─────────────────────────────────────────────────
+const SYSTEM_PROMPT = `You are an AI assistant that ingests legal documents and populates a criminal law knowledge base stored in Google Cloud Firestore. Assume Australian criminal law with emphasis on NSW unless the document clearly indicates otherwise.
+
+When given a legal document to INGEST, output a single JSON object (no markdown, no explanation, just valid JSON) with these exact keys:
+{"title":"Short human-readable title","citation":"Neutral or reported citation if present, else 'not stated'","court":"Court name and level e.g. NSWCCA, HCA, NSWDC","jurisdiction":"e.g. NSW, Commonwealth","decisionDate":"ISO date string e.g. 1999-06-30, or 'not stated'","parties":["array of party names"],"proceduralPosture":"One-sentence description of what the court was deciding","legalIssues":["array of key legal issues in plain language"],"legalPrinciples":["array of short statements of principles derived from the case"],"statutesCited":[{"act":"...","section":"...","jurisdiction":"..."}],"casesCited":[{"caseName":"...","citation":"...","court":"..."}],"outcome":"Short description of result","conciseSummary":"150-300 word neutral summary","detailedSummary":"500-1000 word structured summary covering facts, issues, reasoning, outcome, key principles","quotes":[{"text":"short quote max 40 words","theme":"what it illustrates"}],"offenceTypes":["standardised labels e.g. armed robbery, sexual assault, drug supply"],"topics":["doctrinal topics e.g. objective seriousness, moral culpability, totality, standard non-parole period, parity, special circumstances, delay"],"areaOfLaw":["e.g. sentencing, evidence, procedure"],"courtLevel":"trial or intermediate appellate or court of final appeal","relevanceNotes":["2-4 bullet sentences on when/why this case is practically useful"],"embeddingInput":"A single concatenated string of title, citation, court, concise summary, key issues, key principles, relevant statutes, offence types, topics for vector search"}
+
+When given a SEARCH query, output a single JSON object (no markdown, no explanation, just valid JSON):
+{"keywords":["main search terms"],"filters":{"jurisdiction":[],"court":[],"offenceTypes":[],"topics":[],"areaOfLaw":[]},"vectorQuery":"natural-language string optimised for embedding search","notesForDeveloper":["Example Firestore filter notes"]}`;
+
+async function callClaude(userMessage) {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 4000,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: "user", content: userMessage }],
+    }),
+  });
+  const data = await res.json();
+  const text = (data.content || []).map(i => i.text || "").join("");
+  return JSON.parse(text.replace(/```json|```/g, "").trim());
+}
+
+// ── Ingest ─────────────────────────────────────────────────────
+async function handleIngest() {
+  const pastedText = document.getElementById("ingest-text").value.trim();
+  const textToProcess = currentFileText || pastedText;
+  if (!textToProcess) return;
+
+  const btn = document.getElementById("ingest-btn");
+  const progress = document.getElementById("ingest-progress");
+  const progressText = document.getElementById("progress-text");
+
+  btn.disabled = true;
+  progress.style.display = "block";
+  hideError();
+
+  const steps = [
+    "⟳ Sending to Claude for analysis…",
+    "⟳ Extracting legal issues and principles…",
+    "⟳ Building Firestore document…",
+    "⟳ Saving to database…"
+  ];
+  let stepIdx = 0;
+  progressText.textContent = steps[0];
+  const stepTimer = setInterval(() => {
+    stepIdx = Math.min(stepIdx + 1, steps.length - 1);
+    progressText.textContent = steps[stepIdx];
+  }, 4000);
+
+  try {
+    const result = await callClaude(`INGEST this legal document:\n\n${textToProcess}`);
+    clearInterval(stepTimer);
+    progressText.textContent = "⟳ Saving to Firestore…";
+    const firestoreId = await saveToFirestore(result);
+    const withId = { ...result, _firestoreId: firestoreId };
+    cases.unshift(withId);
+    setDbStatus(true, cases.length);
+    renderCases();
+    // Reset
+    document.getElementById("ingest-text").value = "";
+    currentFileText = "";
+    document.getElementById("file-name").style.display = "none";
+    document.getElementById("file-input").value = "";
+    btn.disabled = true;
+    progress.style.display = "none";
+    showToast(`"${result.title}" saved to Firestore ✓`, "success");
+  } catch(e) {
+    clearInterval(stepTimer);
+    progress.style.display = "none";
+    btn.disabled = false;
+    showError("Failed to process or save. " + e.message);
+  }
+}
+
+// ── Search ─────────────────────────────────────────────────────
+async function handleSearch() {
+  const q = document.getElementById("search-text").value.trim();
+  if (!q) return;
+  const btn = document.getElementById("search-btn");
+  btn.disabled = true;
+  btn.textContent = "Processing…";
+  hideError();
+  document.getElementById("search-result").style.display = "none";
+
+  try {
+    const result = await callClaude(`SEARCH query: ${q}`);
+    renderSearchResult(result);
+  } catch(e) {
+    showError("Failed to process search query. " + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Generate Query →";
+  }
+}
+
+function renderSearchResult(r) {
+  const el = document.getElementById("search-result");
+  const filterRows = Object.entries(r.filters || {})
+    .filter(([,v]) => v && v.length > 0)
+    .map(([k,v]) => `
+      <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;">
+        <span class="font-mono" style="color:#78716c;font-size:11px;min-width:90px;">${k}:</span>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;">${v.map(x => `<span class="tag tag-green">${x}</span>`).join("")}</div>
+      </div>`).join("");
+
+  el.innerHTML = `
+    <div style="border:1px solid rgba(87,83,78,0.5);background:rgba(28,25,23,0.5);border-radius:4px;padding:20px;">
+      <p class="font-display" style="color:#fcd34d;font-size:13px;margin-bottom:16px;">Query Interpretation</p>
+      <p class="section-label">Keywords</p>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;">
+        ${(r.keywords||[]).map(k => `<span class="tag tag-blue">${k}</span>`).join("")}
+      </div>
+      <p class="section-label">Vector Query</p>
+      <p class="font-body" style="color:#d6d3d1;font-size:13px;font-style:italic;background:rgba(41,37,36,0.6);border:1px solid #292524;border-radius:4px;padding:12px;margin-bottom:16px;">"${r.vectorQuery}"</p>
+      ${filterRows ? `<p class="section-label">Filters</p><div style="margin-bottom:16px;">${filterRows}</div>` : ""}
+      <p class="section-label">Developer Notes</p>
+      ${(r.notesForDeveloper||[]).map(n => `<p class="font-mono" style="color:#78716c;font-size:11px;background:rgba(28,25,23,0.8);border:1px solid #292524;border-radius:3px;padding:6px 10px;margin-bottom:4px;">${n}</p>`).join("")}
+    </div>`;
+  el.style.display = "block";
+}
+
+// ── Render cases ───────────────────────────────────────────────
+function renderCases() {
+  const list = document.getElementById("cases-list");
+  const exportBtn = document.getElementById("export-btn");
+
+  if (cases.length === 0) {
+    list.innerHTML = `<div style="border:1px dashed rgba(41,37,36,0.6);border-radius:4px;padding:40px;text-align:center;">
+      <p class="font-display" style="color:#292524;font-size:15px;font-style:italic;">No cases in database yet.</p>
+      <p class="font-mono" style="color:#292524;font-size:11px;margin-top:8px;">Upload a document and click Analyse & Save →</p>
+    </div>`;
+    exportBtn.style.display = "none";
+    return;
+  }
+
+  exportBtn.style.display = "block";
+  list.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;max-height:calc(100vh - 220px);overflow-y:auto;scrollbar-width:thin;scrollbar-color:#57534e #1c1917;padding-right:4px;">
+    ${cases.map((doc, i) => `
+      <div class="card" onclick="openModal(${i})">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px;">
+          <h3 class="font-display" style="color:#fde68a;font-size:15px;line-height:1.3;">${esc(doc.title || "Untitled")}</h3>
+          <span class="font-mono" style="color:#57534e;font-size:10px;white-space:nowrap;margin-top:3px;">${esc(doc.court || "")}</span>
+        </div>
+        <p class="font-mono" style="color:#78716c;font-size:11px;margin-bottom:10px;">${esc(doc.citation || "")} · ${esc(doc.decisionDate || "")}</p>
+        <p class="font-body line-clamp-2" style="color:#78716c;font-size:13px;line-height:1.6;margin-bottom:10px;">${esc(doc.conciseSummary || "")}</p>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;">
+          ${(doc.offenceTypes||[]).slice(0,3).map(t => `<span class="tag tag-red">${esc(t)}</span>`).join("")}
+          ${(doc.topics||[]).slice(0,3).map(t => `<span class="tag tag-amber">${esc(t)}</span>`).join("")}
+        </div>
+      </div>`).join("")}
+  </div>`;
+}
+
+// ── Modal ──────────────────────────────────────────────────────
+function openModal(idx) {
+  const doc = cases[idx];
+  document.getElementById("modal-title").textContent = doc.title || "Untitled";
+  document.getElementById("modal-meta").textContent = [doc.citation, doc.court, doc.decisionDate].filter(Boolean).join(" · ");
+  document.getElementById("modal-fsid").textContent = doc._firestoreId ? "✓ Firestore ID: " + doc._firestoreId : "";
+
+  const body = document.getElementById("modal-body");
+  body.innerHTML = `
+    ${section("Outcome", `<p style="color:#fcd34d;font-size:13px;font-weight:600;">${esc(doc.outcome||"")}</p>`)}
+    ${section("Summary", `<p class="font-body" style="color:#d6d3d1;font-size:13px;line-height:1.7;">${esc(doc.conciseSummary||"")}</p>`)}
+    ${section("Legal Issues", bulletList(doc.legalIssues))}
+    ${section("Legal Principles", bulletList(doc.legalPrinciples))}
+    ${doc.quotes && doc.quotes.length ? section("Key Quotes", doc.quotes.map(q => `
+      <div style="border-left:2px solid #92400e;padding:4px 12px;margin-bottom:8px;">
+        <p class="font-body" style="color:#d6d3d1;font-size:13px;font-style:italic;">"${esc(q.text||"")}"</p>
+        <p class="font-mono" style="color:#57534e;font-size:10px;margin-top:4px;">${esc(q.theme||"")}</p>
+      </div>`).join("")) : ""}
+    ${section("Relevance Notes", bulletList(doc.relevanceNotes))}
+    ${section("Tags", `<div style="display:flex;flex-wrap:wrap;gap:6px;">
+      ${(doc.offenceTypes||[]).map(t=>`<span class="tag tag-red">${esc(t)}</span>`).join("")}
+      ${(doc.topics||[]).map(t=>`<span class="tag tag-amber">${esc(t)}</span>`).join("")}
+      ${(doc.areaOfLaw||[]).map(t=>`<span class="tag tag-blue">${esc(t)}</span>`).join("")}
+    </div>`)}
+    ${doc.statutesCited && doc.statutesCited.length ? section("Statutes Cited", doc.statutesCited.map(s =>
+      `<p class="font-mono" style="color:#78716c;font-size:11px;">${esc(s.act||"")} s ${esc(s.section||"")} (${esc(s.jurisdiction||"")})</p>`
+    ).join("")) : ""}
+    ${section("Detailed Summary", `<p class="font-body" style="color:#a8a29e;font-size:13px;line-height:1.8;white-space:pre-line;">${esc(doc.detailedSummary||"")}</p>`)}
+    ${section("Raw Firestore JSON", `<pre class="font-mono" style="background:#1c1917;border:1px solid #292524;border-radius:4px;padding:12px;font-size:11px;color:#78716c;overflow-x:auto;">${esc(JSON.stringify(doc, null, 2))}</pre>`)}
+  `;
+  document.getElementById("modal").style.display = "flex";
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById("modal")) {
+    document.getElementById("modal").style.display = "none";
+  }
+}
+
+function section(label, content) {
+  return `<div style="margin-bottom:24px;">
+    <p class="section-label">${label}</p>
+    ${content}
+  </div>`;
+}
+
+function bulletList(arr) {
+  if (!arr || !arr.length) return '<p class="font-mono" style="color:#44403c;font-size:11px;">—</p>';
+  return `<ul style="list-style:none;padding:0;margin:0;">${arr.map(x =>
+    `<li style="display:flex;gap:8px;margin-bottom:5px;">
+      <span style="color:#92400e;margin-top:1px;">›</span>
+      <span class="font-body" style="color:#d6d3d1;font-size:13px;line-height:1.6;">${esc(x)}</span>
+    </li>`).join("")}</ul>`;
+}
+
+// ── Tab switching ──────────────────────────────────────────────
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById("panel-ingest").style.display = tab === "ingest" ? "block" : "none";
+  document.getElementById("panel-search").style.display = tab === "search" ? "block" : "none";
+  document.getElementById("tab-ingest").className = "tab-btn" + (tab === "ingest" ? " active" : "");
+  document.getElementById("tab-search").className = "tab-btn" + (tab === "search" ? " active" : "");
+  hideError();
+}
+
+// ── Export ─────────────────────────────────────────────────────
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(cases, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "apm-legal-kb.json";
+  a.click();
+}
+
+// ── Toast ──────────────────────────────────────────────────────
+function showToast(msg, type = "success") {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.style.display = "block";
+  el.style.background = type === "success" ? "#1c1917" : "#450a0a";
+  el.style.border = type === "success" ? "1px solid rgba(180,83,9,0.5)" : "1px solid rgba(153,27,27,0.5)";
+  el.style.color = type === "success" ? "#fcd34d" : "#fca5a5";
+  el.classList.remove("toast-enter");
+  void el.offsetWidth;
+  el.classList.add("toast-enter");
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => { el.style.display = "none"; }, 4000);
+}
+
+function showError(msg) {
+  const el = document.getElementById("error-box");
+  document.getElementById("error-text").textContent = msg;
+  el.style.display = "block";
+}
+function hideError() {
+  document.getElementById("error-box").style.display = "none";
+}
+
+// ── Escape HTML ────────────────────────────────────────────────
+function esc(str) {
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+// ── Responsive grid ────────────────────────────────────────────
+function checkLayout() {
+  const grid = document.querySelector('[style*="grid-template-columns"]');
+  if (!grid) return;
+  if (window.innerWidth < 900) {
+    grid.style.gridTemplateColumns = "1fr";
+  } else {
+    grid.style.gridTemplateColumns = "1fr 1fr";
+  }
+}
+window.addEventListener("resize", checkLayout);
+checkLayout();
+</script>
+</body>
+</html>

@@ -431,8 +431,7 @@ async function handleIngest() {
   }, 4000);
 
   try {
-    const truncated = textToProcess.slice(0, 15000);
-    const result = await callClaude(`INGEST this legal document:\n\n${truncated}`);
+    const result = await callClaude(`INGEST this legal document:\n\n${textToProcess}`);
     clearInterval(stepTimer);
     progressText.textContent = "⟳ Saving to Firestore…";
     const firestoreId = await saveToFirestore(result);

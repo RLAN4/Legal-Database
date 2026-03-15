@@ -7,6 +7,20 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+<script type="module">
+// Firebase Auth via CDN modules — loaded async, sets window.fbAuth
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import{getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+const fbApp=initializeApp({apiKey:"AIzaSyAtRaBvfTbme3tm4bZfWbcV4FOBosdCtnc",authDomain:"apm-legal-database.firebaseapp.com",projectId:"apm-legal-database"});
+const auth=getAuth(fbApp);
+window._fbSignIn=(e,p)=>signInWithEmailAndPassword(auth,e,p);
+window._fbSignOut=()=>signOut(auth);
+window._fbOnAuth=(cb)=>onAuthStateChanged(auth,cb);
+window._fbAuthReady=true;
+// Notify app that auth is ready
+document.dispatchEvent(new Event("fbAuthReady"));
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Mono:wght@300;400;500&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;}
@@ -94,8 +108,19 @@ hr.d{border-color:rgba(68,64,60,.4);margin:0;}
 .prog-step.done{color:#10b981;}
 .prog-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;}
 
-.lc2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.doctype-btn{padding:5px 8px;font-size:10px;font-family:'DM Mono',monospace;letter-spacing:.06em;border-radius:2px;cursor:pointer;border:1px solid rgba(87,83,78,.4);background:rgba(41,37,36,.4);color:#78716c;transition:all .15s;text-align:left;}
+.doctype-btn:hover{color:#a8a29e;border-color:rgba(120,100,80,.5);}
+.doctype-btn.active-dt{border-color:rgba(180,83,9,.5);background:rgba(120,53,15,.25);color:#fcd34d;}
 .lc3{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.brief-qprompt{text-align:left;padding:7px 10px;font-size:10px;font-family:'DM Mono',monospace;letter-spacing:.04em;background:rgba(46,16,101,.15);border:1px solid rgba(109,40,217,.25);color:#c4b5fd;border-radius:2px;cursor:pointer;transition:all .15s;width:100%;}
+.brief-qprompt:hover{background:rgba(46,16,101,.3);border-color:rgba(167,139,250,.4);}
+.brief-doc-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid rgba(28,25,23,.8);cursor:pointer;transition:background .15s;}
+.brief-doc-item:hover{background:rgba(41,37,36,.5);}
+.brief-doc-item.selected-doc{background:rgba(46,16,101,.2);}
+.brief-result-card{border:1px solid rgba(109,40,217,.25);background:rgba(46,16,101,.08);border-radius:4px;overflow:hidden;}
+.brief-result-header{padding:10px 14px;background:rgba(46,16,101,.2);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.copy-btn{padding:4px 10px;font-size:9px;font-family:'DM Mono',monospace;letter-spacing:.08em;background:rgba(41,37,36,.6);border:1px solid rgba(87,83,78,.4);color:#78716c;border-radius:2px;cursor:pointer;transition:all .15s;}
+.copy-btn:hover{color:#fcd34d;border-color:rgba(180,83,9,.4);}
 </style>
 </head>
 <body>
@@ -129,6 +154,11 @@ hr.d{border-color:rgba(68,64,60,.4);margin:0;}
     <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
       <div id="db-dot" style="width:7px;height:7px;border-radius:50%;background:#374151;"></div>
       <span id="db-status" class="fm" style="color:#57534e;font-size:10px;">Connecting…</span>
+      <div id="auth-status" style="display:none;align-items:center;gap:6px;padding:3px 10px;border:1px solid rgba(109,40,217,.3);background:rgba(46,16,101,.2);border-radius:20px;">
+        <div style="width:5px;height:5px;border-radius:50%;background:#a78bfa;"></div>
+        <span id="auth-email" class="fm" style="color:#c4b5fd;font-size:9px;"></span>
+        <button onclick="handleSignOut()" class="fm" style="background:none;border:none;color:#78716c;cursor:pointer;font-size:9px;padding:0 0 0 4px;" title="Sign out">↩</button>
+      </div>
     </div>
   </div>
   <!-- Active filter bar -->
@@ -152,43 +182,100 @@ hr.d{border-color:rgba(68,64,60,.4);margin:0;}
       <button class="tab active" id="tab-ingest" onclick="switchTab('ingest')">↓ Ingest</button>
       <button class="tab" id="tab-ask" onclick="switchTab('ask')">✦ Ask AI</button>
       <button class="tab" id="tab-topics" onclick="switchTab('topics')">◈ Topics</button>
+      <button class="tab" id="tab-brief" onclick="switchTab('brief')" style="color:#a78bfa;">🔒 Brief</button>
     </div>
 
     <!-- INGEST PANEL -->
     <div id="panel-ingest">
       <p class="fm" style="color:#57534e;font-size:11px;line-height:1.7;margin-bottom:12px;">Upload a PDF or Word doc, or paste text. Claude AI will extract and save to Firestore.</p>
 
-      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()"
-        ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
-        <input type="file" id="file-input" accept=".pdf,.doc,.docx" style="display:none;" onchange="handleFileSelect(event)"/>
-        <div style="color:#44403c;font-size:24px;margin-bottom:6px;">📄</div>
-        <p class="fm" style="color:#57534e;font-size:11px;">Drop PDF or Word doc here</p>
-        <p class="fm" style="color:#292524;font-size:10px;margin-top:3px;">or click to browse</p>
-        <div id="file-name" style="display:none;margin-top:10px;padding:5px 10px;background:rgba(120,53,15,.2);border:1px solid rgba(180,83,9,.3);border-radius:2px;color:#fcd34d;font-size:10px;" class="fm"></div>
+      <!-- Mode switcher -->
+      <div style="display:flex;gap:6px;margin-bottom:12px;">
+        <button id="mode-btn-manual" onclick="setIngestMode('manual')" style="flex:1;padding:7px;font-size:10px;font-family:'DM Mono',monospace;letter-spacing:.08em;border-radius:3px;cursor:pointer;border:1px solid rgba(180,83,9,.5);background:rgba(120,53,15,.3);color:#fcd34d;transition:all .2s;">✎ Manual</button>
+        <button id="mode-btn-ai" onclick="setIngestMode('ai')" style="flex:1;padding:7px;font-size:10px;font-family:'DM Mono',monospace;letter-spacing:.08em;border-radius:3px;cursor:pointer;border:1px solid rgba(87,83,78,.4);background:rgba(41,37,36,.4);color:#78716c;transition:all .2s;">✦ AI Analysis</button>
       </div>
 
-      <div style="display:flex;align-items:center;gap:8px;margin:10px 0;">
-        <hr class="d" style="flex:1;"/><span class="fm" style="color:#292524;font-size:9px;">OR PASTE TEXT</span><hr class="d" style="flex:1;"/>
+      <!-- Document type selector — shared by both modes -->
+      <div style="margin-bottom:12px;">
+        <p class="sl">Document Type</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;" id="doctype-btns">
+          <button onclick="setDocType('case')"     id="dt-case"       class="doctype-btn active-dt">⚖ Case / Judgment</button>
+          <button onclick="setDocType('paper')"    id="dt-paper"      class="doctype-btn">📝 Research Paper</button>
+          <button onclick="setDocType('commentary')" id="dt-commentary" class="doctype-btn">💬 Commentary</button>
+          <button onclick="setDocType('draft')"    id="dt-draft"      class="doctype-btn">📋 Draft Document</button>
+        </div>
       </div>
 
-      <textarea id="ingest-text" class="inp" style="min-height:120px;font-family:'Libre Baskerville',Georgia,serif;font-size:13px;line-height:1.6;" placeholder="Paste case text here…"></textarea>
-
-      <!-- Topic assignment -->
-      <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
-        <span class="fm" style="color:#57534e;font-size:10px;white-space:nowrap;">Assign topic:</span>
-        <input type="text" id="topic-input" class="inp" style="font-size:11px;padding:6px 10px;" placeholder="e.g. Sentencing — Armed Robbery" list="topic-list"/>
-        <datalist id="topic-list"></datalist>
+      <!-- MANUAL MODE -->
+      <div id="ingest-manual">
+        <p class="fm" style="color:#57534e;font-size:11px;line-height:1.7;margin-bottom:10px;">Add a document with title and topic — no AI required. Full text stored and searchable.</p>
+        <div style="margin-bottom:8px;">
+          <p class="sl">Title *</p>
+          <input type="text" id="manual-title" class="inp" style="font-size:12px;" placeholder="e.g. R v Smith [2003] NSWCCA 123"/>
+        </div>
+        <div style="margin-bottom:8px;">
+          <p class="sl">Topic *</p>
+          <input type="text" id="manual-topic" class="inp" style="font-size:12px;" placeholder="e.g. Sentencing — Armed Robbery" list="topic-list"/>
+        </div>
+        <div style="margin-bottom:8px;">
+          <p class="sl" id="manual-ref-label">Citation / Reference</p>
+          <input type="text" id="manual-citation" class="inp" style="font-size:12px;" placeholder="e.g. [2003] NSWCCA 123"/>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+          <div>
+            <p class="sl" id="manual-source-label">Court / Source</p>
+            <input type="text" id="manual-court" class="inp" style="font-size:12px;" placeholder="e.g. NSWCCA"/>
+          </div>
+          <div>
+            <p class="sl" id="manual-date-label">Date</p>
+            <input type="date" id="manual-date" class="inp" style="font-size:12px;"/>
+          </div>
+        </div>
+        <div style="margin-bottom:10px;">
+          <p class="sl">Upload Document (optional — stored for full-text search)</p>
+          <div class="drop-zone" id="drop-zone-manual" onclick="document.getElementById('file-input-manual').click()"
+            ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDropManual(event)" style="padding:16px;">
+            <input type="file" id="file-input-manual" accept=".pdf,.doc,.docx" style="display:none;" onchange="handleFileSelectManual(event)"/>
+            <p class="fm" style="color:#57534e;font-size:11px;">Drop PDF or Word doc here, or click to browse</p>
+            <div id="file-name-manual" style="display:none;margin-top:8px;padding:4px 8px;background:rgba(120,53,15,.2);border:1px solid rgba(180,83,9,.3);border-radius:2px;color:#fcd34d;font-size:10px;" class="fm"></div>
+          </div>
+        </div>
+        <button class="btn-primary" id="manual-save-btn" onclick="handleManualSave()">Save to Database →</button>
       </div>
 
-      <div style="margin-top:8px;">
-        <button class="btn-primary" id="ingest-btn" onclick="handleIngest()" disabled>Analyse &amp; Save →</button>
-      </div>
+      <!-- AI MODE -->
+      <div id="ingest-ai" style="display:none;">
+        <p class="fm" style="color:#57534e;font-size:11px;line-height:1.7;margin-bottom:10px;">Upload for full AI analysis. Large documents are batch-processed for complete accuracy.</p>
 
-      <!-- Progress -->
-      <div id="ingest-progress" style="display:none;margin-top:10px;padding:12px;background:rgba(28,25,23,.8);border:1px solid #1c1917;border-radius:3px;">
-        <div id="prog-steps"></div>
+        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()"
+          ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+          <input type="file" id="file-input" accept=".pdf,.doc,.docx" style="display:none;" onchange="handleFileSelect(event)"/>
+          <div style="color:#44403c;font-size:24px;margin-bottom:6px;">📄</div>
+          <p class="fm" style="color:#57534e;font-size:11px;">Drop PDF or Word doc here</p>
+          <p class="fm" style="color:#292524;font-size:10px;margin-top:3px;">or click to browse</p>
+          <div id="file-name" style="display:none;margin-top:10px;padding:5px 10px;background:rgba(120,53,15,.2);border:1px solid rgba(180,83,9,.3);border-radius:2px;color:#fcd34d;font-size:10px;" class="fm"></div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:8px;margin:10px 0;">
+          <hr class="d" style="flex:1;"/><span class="fm" style="color:#292524;font-size:9px;">OR PASTE TEXT</span><hr class="d" style="flex:1;"/>
+        </div>
+
+        <textarea id="ingest-text" class="inp" style="min-height:100px;font-family:'Libre Baskerville',Georgia,serif;font-size:13px;line-height:1.6;" id="ingest-text" placeholder="Paste text here…"></textarea>
+
+        <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
+          <span class="fm" style="color:#57534e;font-size:10px;white-space:nowrap;">Assign topic:</span>
+          <input type="text" id="topic-input" class="inp" style="font-size:11px;padding:6px 10px;" placeholder="e.g. Sentencing — Armed Robbery" list="topic-list"/>
+          <datalist id="topic-list"></datalist>
+        </div>
+
+        <div style="margin-top:8px;">
+          <button class="btn-primary" id="ingest-btn" onclick="handleIngest()" disabled>Analyse &amp; Save →</button>
+        </div>
+
+        <div id="ingest-progress" style="display:none;margin-top:10px;padding:12px;background:rgba(28,25,23,.8);border:1px solid #1c1917;border-radius:3px;">
+          <div id="prog-steps"></div>
+        </div>
       </div>
-    </div>
 
     <!-- ASK AI PANEL -->
     <div id="panel-ask" style="display:none;">
@@ -204,6 +291,84 @@ hr.d{border-color:rgba(68,64,60,.4);margin:0;}
     <div id="panel-topics" style="display:none;">
       <p class="fm" style="color:#57534e;font-size:11px;line-height:1.7;margin-bottom:12px;">All topics in your knowledge base. Click to filter cases.</p>
       <div id="topics-list"></div>
+    </div>
+
+    <!-- BRIEF ANALYSIS PANEL (left col — controls) -->
+    <div id="panel-brief" style="display:none;">
+      <!-- Login gate -->
+      <div id="brief-login-gate">
+        <div style="padding:20px;border:1px solid rgba(109,40,217,.3);background:rgba(46,16,101,.12);border-radius:4px;text-align:center;">
+          <div style="font-size:28px;margin-bottom:10px;">🔒</div>
+          <p class="fd" style="color:#d8b4fe;font-size:15px;margin-bottom:6px;">Brief Analysis</p>
+          <p class="fm" style="color:#57534e;font-size:11px;line-height:1.6;margin-bottom:16px;">This section handles sensitive brief material and requires authentication.</p>
+          <div style="text-align:left;margin-bottom:10px;">
+            <p class="sl">Email</p>
+            <input type="email" id="login-email" class="inp" style="font-size:12px;" placeholder="your@email.com"/>
+          </div>
+          <div style="text-align:left;margin-bottom:12px;">
+            <p class="sl">Password</p>
+            <input type="password" id="login-password" class="inp" style="font-size:12px;" placeholder="••••••••" onkeydown="if(event.key==='Enter')handleSignIn()"/>
+          </div>
+          <button onclick="handleSignIn()" class="btn-primary" id="login-btn">Sign In →</button>
+          <p id="login-error" style="display:none;margin-top:8px;color:#fca5a5;font-size:11px;" class="fm"></p>
+          <p class="fm" style="color:#44403c;font-size:10px;margin-top:12px;line-height:1.6;">Data is encrypted before storage. Only accessible when signed in.</p>
+        </div>
+      </div>
+
+      <!-- Brief controls (shown when logged in) -->
+      <div id="brief-controls" style="display:none;">
+        <!-- Upload documents -->
+        <div style="margin-bottom:14px;">
+          <p class="sl">Upload Brief Documents</p>
+          <div class="drop-zone" id="brief-drop-zone" onclick="document.getElementById('brief-file-input').click()"
+            ondragover="handleDragOver(event)" ondragleave="handleBriefDragLeave(event)" ondrop="handleBriefDrop(event)" style="padding:14px;">
+            <input type="file" id="brief-file-input" accept=".pdf,.doc,.docx" multiple style="display:none;" onchange="handleBriefFiles(event)"/>
+            <p class="fm" style="color:#57534e;font-size:11px;">Drop PDF or Word files here (multiple allowed)</p>
+            <p class="fm" style="color:#292524;font-size:10px;margin-top:2px;">or click to browse</p>
+          </div>
+          <p id="brief-upload-status" class="fm" style="display:none;color:#a78bfa;font-size:10px;margin-top:6px;"></p>
+        </div>
+
+        <!-- Document library -->
+        <div style="margin-bottom:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <p class="sl" style="margin-bottom:0;">Document Library</p>
+            <span id="brief-doc-count" class="fm" style="color:#44403c;font-size:10px;"></span>
+          </div>
+          <div id="brief-doc-list" style="max-height:200px;overflow-y:auto;scrollbar-width:thin;border:1px solid rgba(68,64,60,.4);border-radius:3px;"></div>
+        </div>
+
+        <!-- Background prompt -->
+        <div style="margin-bottom:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+            <p class="sl" style="margin-bottom:0;">Background / System Prompt</p>
+            <button onclick="saveBriefSystemPrompt()" class="btn-ghost" style="font-size:9px;">Save</button>
+          </div>
+          <textarea id="brief-system-prompt" class="inp" style="min-height:70px;font-size:11px;line-height:1.5;" placeholder="e.g. You are assisting a criminal defence lawyer in NSW. The client is charged with armed robbery. Focus on identification evidence and alibi. Always consider admissibility issues."></textarea>
+        </div>
+
+        <!-- Pre-baked prompts -->
+        <div style="margin-bottom:14px;">
+          <p class="sl">Quick Prompts — Click to Use</p>
+          <div style="display:flex;flex-direction:column;gap:4px;" id="brief-quick-prompts">
+            <button onclick="setBriefPrompt('Provide a concise summary of this document, identifying its key contents, purpose and relevance to the brief.')" class="brief-qprompt">📄 Summarise this document</button>
+            <button onclick="setBriefPrompt('Identify all key witnesses mentioned in this document. For each witness, summarise their evidence and assess its significance.')" class="brief-qprompt">👤 Key witnesses &amp; their evidence</button>
+            <button onclick="setBriefPrompt('Identify any inconsistencies, contradictions or weaknesses in the evidence across the selected documents. Be specific about what is inconsistent and why it matters.')" class="brief-qprompt">⚡ Inconsistencies in the evidence</button>
+            <button onclick="setBriefPrompt('Based on the evidence in these documents, identify all potential defences available. Assess the strength of each defence.')" class="brief-qprompt">🛡 List potential defences</button>
+            <button onclick="setBriefPrompt('Identify any admissibility issues with the evidence in these documents. Consider hearsay, relevance, unfair prejudice, and any other grounds for challenge.')" class="brief-qprompt">⚖ Admissibility issues</button>
+            <button onclick="setBriefPrompt('Draft cross-examination questions for the key witnesses in these documents. Focus on inconsistencies, credibility, and matters favourable to the defence.')" class="brief-qprompt">❓ Draft cross-examination questions</button>
+            <button onclick="setBriefPrompt('Create a detailed chronology of all events mentioned across the selected documents. Format as: Date | Time | Event | Source document.')" class="brief-qprompt">📅 Create a Chronology</button>
+          </div>
+        </div>
+
+        <!-- Custom prompt -->
+        <div style="margin-bottom:10px;">
+          <p class="sl">Custom Prompt</p>
+          <textarea id="brief-custom-prompt" class="inp" style="min-height:70px;font-size:12px;font-family:'Libre Baskerville',Georgia,serif;line-height:1.6;" placeholder="Ask anything about the selected documents…"></textarea>
+        </div>
+
+        <button onclick="handleBriefQuery()" class="btn-primary" id="brief-query-btn" disabled>Analyse Selected Documents →</button>
+      </div>
     </div>
 
     <!-- Error -->
@@ -224,8 +389,20 @@ hr.d{border-color:rgba(68,64,60,.4);margin:0;}
 
   </div>
 
-  <!-- RIGHT: Cases list -->
-  <div>
+  <!-- RIGHT: Cases list / Brief workspace -->
+  <div id="right-col">
+    <!-- Brief workspace (hidden unless in brief tab) -->
+    <div id="brief-workspace" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1c1917;padding-bottom:10px;margin-bottom:14px;">
+        <p class="sl" style="margin-bottom:0;">Analysis Results</p>
+        <button onclick="clearBriefResults()" class="btn-ghost" id="brief-clear-btn" style="display:none;">Clear all</button>
+      </div>
+      <div id="brief-results" style="display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - 160px);overflow-y:auto;scrollbar-width:thin;padding-right:4px;">
+        <div style="border:1px dashed rgba(68,64,60,.4);border-radius:4px;padding:40px;text-align:center;">
+          <p class="fd" style="color:#292524;font-size:14px;font-style:italic;">Select documents from the library and run a query.</p>
+        </div>
+      </div>
+    </div>
     <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1c1917;padding-bottom:10px;margin-bottom:14px;gap:12px;">
       <div style="display:flex;align-items:center;gap:10px;">
         <p class="sl" style="margin-bottom:0;" id="cases-heading">Knowledge Base</p>
@@ -330,6 +507,7 @@ async function fsLoad(){
     filteredCases=[...cases];
     setDbStatus(true);
     setView("topic");
+    setIngestMode("manual");
     renderCases();
     updateStats();
     updateTopicsList();
@@ -341,6 +519,96 @@ function setDbStatus(ok){
   document.getElementById("db-dot").style.background=ok?"#10b981":"#ef4444";
   document.getElementById("db-status").textContent=ok?`${cases.length} case${cases.length!==1?"s":""}`:"Error";
 }
+
+// ── Ingest mode ─────────────────────────────────────────────────
+let ingestMode="manual";
+let currentFileTextManual="";
+
+function setIngestMode(mode){
+  ingestMode=mode;
+  document.getElementById("ingest-manual").style.display=mode==="manual"?"block":"none";
+  document.getElementById("ingest-ai").style.display=mode==="ai"?"block":"none";
+  const on="flex:1;padding:7px;font-size:10px;font-family:'DM Mono',monospace;letter-spacing:.08em;border-radius:3px;cursor:pointer;border:1px solid rgba(180,83,9,.5);background:rgba(120,53,15,.3);color:#fcd34d;transition:all .2s;";
+  const off="flex:1;padding:7px;font-size:10px;font-family:'DM Mono',monospace;letter-spacing:.08em;border-radius:3px;cursor:pointer;border:1px solid rgba(87,83,78,.4);background:rgba(41,37,36,.4);color:#78716c;transition:all .2s;";
+  document.getElementById("mode-btn-manual").style.cssText=mode==="manual"?on:off;
+  document.getElementById("mode-btn-ai").style.cssText=mode==="ai"?on:off;
+  hideError();
+}
+
+// ── Manual file handling ─────────────────────────────────────────
+async function handleFileSelectManual(e){const f=e.target.files[0];if(f)await processFileManual(f);}
+function handleDropManual(e){e.preventDefault();document.getElementById("drop-zone-manual").classList.remove("drag-over");const f=e.dataTransfer.files[0];if(f)processFileManual(f);}
+async function processFileManual(file){
+  const nameEl=document.getElementById("file-name-manual");
+  nameEl.textContent="⟳ Reading "+file.name+"…";
+  nameEl.style.display="block";
+  currentFileTextManual="";
+  try{
+    if(file.name.endsWith(".pdf")) currentFileTextManual=await extractPDF(file);
+    else if(file.name.endsWith(".docx")||file.name.endsWith(".doc")) currentFileTextManual=await extractDOCX(file);
+    else{showError("Unsupported file type.");nameEl.style.display="none";return;}
+    nameEl.textContent="✓ "+file.name+" ("+Math.round(currentFileTextManual.length/1000)+"k chars stored)";
+    hideError();
+  }catch(e){nameEl.style.display="none";showError("Could not read file: "+e.message);}
+}
+
+// ── Manual save ──────────────────────────────────────────────────
+async function handleManualSave(){
+  const title=document.getElementById("manual-title").value.trim();
+  const topic=document.getElementById("manual-topic").value.trim();
+  if(!title){showError("Title is required.");return;}
+  if(!topic){showError("Topic is required.");return;}
+  const btn=document.getElementById("manual-save-btn");
+  btn.disabled=true;btn.textContent="Saving…";hideError();
+  try{
+    const doc={
+      title,primaryTopic:topic,docType,
+      citation:document.getElementById("manual-citation").value.trim()||"not stated",
+      court:document.getElementById("manual-court").value.trim()||"not stated",
+      decisionDate:document.getElementById("manual-date").value||"not stated",
+      jurisdiction:"NSW",
+      parties:[],legalIssues:[],legalPrinciples:[],statutesCited:[],casesCited:[],
+      quotes:[],offenceTypes:[],topics:[topic],areaOfLaw:[],relevanceNotes:[],
+      outcome:"",conciseSummary:"",detailedSummary:"",embeddingInput:title+" "+topic,
+      courtLevel:"",proceduralPosture:"",fullText:currentFileTextManual||"",manualEntry:true
+    };
+    const id=await fsSave(doc);
+    cases.unshift({...doc,_id:id});
+    applyFiltersAndSearch();updateStats();updateTopicsList();updateTopicDatalist();setDbStatus(true);
+    ["manual-title","manual-citation","manual-court"].forEach(i=>document.getElementById(i).value="");
+    document.getElementById("manual-date").value="";
+    document.getElementById("manual-topic").value="";
+    document.getElementById("file-name-manual").style.display="none";
+    document.getElementById("file-input-manual").value="";
+    currentFileTextManual="";
+    showToast(`"${title}" saved ✓`,"success");
+  }catch(e){showError("Save failed: "+e.message);}
+  finally{btn.disabled=false;btn.textContent="Save to Database →";}
+}
+
+// ── Batch AI processing ──────────────────────────────────────────
+const CHUNK_SIZE=12000;
+const CHUNK_OVERLAP=800;
+
+function chunkText(text){
+  const chunks=[];
+  let pos=0;
+  while(pos<text.length){
+    chunks.push(text.slice(pos,pos+CHUNK_SIZE));
+    if(pos+CHUNK_SIZE>=text.length) break;
+    pos+=CHUNK_SIZE-CHUNK_OVERLAP;
+  }
+  return chunks;
+}
+
+const CHUNK_PROMPT_BASE=`Analyse this PORTION of a legal document (type: DOCTYPE). Prior context from earlier portions may be provided — use it but focus on new content only. Return ONLY valid JSON, start with { end with }:
+{"title":"","citation":"","court":"","jurisdiction":"","decisionDate":"","parties":[],"legalIssues":[],"legalPrinciples":[],"statutesCited":[],"casesCited":[],"outcome":"","summaryNotes":"2-4 sentences on what THIS portion covers (not what was already covered)","quotes":[],"offenceTypes":[],"topics":[],"areaOfLaw":[]}
+PORTION:\n`;
+function getChunkPrompt(){return CHUNK_PROMPT_BASE.replace("DOCTYPE",docType);}
+
+const MERGE_PROMPT=`Merge these structured extracts from sequential portions of one legal document into a single complete record. Return ONLY valid JSON, start with { end with }.
+{"title":"best title","citation":"best citation","court":"","jurisdiction":"","decisionDate":"ISO or not stated","parties":[],"proceduralPosture":"one sentence","legalIssues":[],"legalPrinciples":[],"statutesCited":[],"casesCited":[],"outcome":"","conciseSummary":"150-250 words","detailedSummary":"600-900 words: Facts | Issues | Reasoning | Outcome | Key Principles","quotes":[{"text":"","theme":"","pageRef":""}],"offenceTypes":[],"topics":[],"primaryTopic":"single most relevant topic","areaOfLaw":[],"courtLevel":"","relevanceNotes":[],"embeddingInput":"title+citation+court+summary+issues+principles+topics"}
+CHUNK EXTRACTS:\n`;
 
 // ── File handling ───────────────────────────────────────────────
 async function extractPDF(file){
@@ -397,89 +665,164 @@ async function callClaude(prompt){
   return d.content?.[0]?.text||"";
 }
 
-const INGEST_PROMPT=`You are an expert Australian criminal law analyst. Analyse the following legal document and extract structured data. Return ONLY valid JSON with no markdown, no explanation, no code blocks.
+// ── Document type ────────────────────────────────────────────────
+let docType="case";
 
-Required JSON structure:
-{
-  "title": "Short official case name or title",
-  "citation": "Full citation or 'not stated'",
-  "court": "Court name e.g. NSWCCA, HCA, NSWDC or 'not stated'",
-  "jurisdiction": "NSW / Commonwealth / Victoria etc",
-  "decisionDate": "ISO date e.g. 2003-06-15 or 'not stated'",
-  "parties": ["Appellant name","Respondent name"],
-  "proceduralPosture": "One sentence: what was the court deciding",
-  "legalIssues": ["Issue 1","Issue 2"],
-  "legalPrinciples": ["Principle 1","Principle 2","Principle 3"],
-  "statutesCited": [{"act":"Crimes Act 1900","section":"97","jurisdiction":"NSW"}],
-  "casesCited": [{"caseName":"R v XYZ","citation":"[2001] NSWCCA 123","court":"NSWCCA"}],
-  "outcome": "Short outcome e.g. Appeal dismissed. Sentence reduced to X.",
-  "conciseSummary": "150-250 word neutral professional summary",
-  "detailedSummary": "600-900 word structured summary: Facts | Issues | Reasoning | Outcome | Key Principles",
-  "quotes": [{"text":"Exact quote under 40 words","theme":"What this illustrates","pageRef":"Page X or unknown"}],
-  "offenceTypes": ["armed robbery","drug supply"],
-  "topics": ["objective seriousness","totality","standard non-parole period"],
-  "primaryTopic": "The single most relevant doctrinal topic e.g. Sentencing — Armed Robbery",
-  "areaOfLaw": ["sentencing","evidence"],
-  "courtLevel": "trial / intermediate appellate / court of final appeal",
-  "relevanceNotes": ["When/why this case is useful — note 1","note 2","note 3"],
-  "fullText": "The complete extracted text of the document for full-text search"
+function setDocType(type){
+  docType=type;
+  document.querySelectorAll(".doctype-btn").forEach(b=>b.classList.remove("active-dt"));
+  document.getElementById("dt-"+type).classList.add("active-dt");
+  // Update manual form labels to match doc type
+  const labels={
+    case:     {ref:"Citation",         source:"Court",           date:"Decision Date"},
+    paper:    {ref:"Journal / Publisher", source:"Author(s)",    date:"Publication Date"},
+    commentary:{ref:"Reference / URL",  source:"Author(s)",      date:"Published Date"},
+    draft:    {ref:"Version / Reference", source:"Author / Firm", date:"Date"},
+  };
+  const l=labels[type]||labels.case;
+  document.getElementById("manual-ref-label").textContent=l.ref;
+  document.getElementById("manual-source-label").textContent=l.source;
+  document.getElementById("manual-date-label").textContent=l.date;
+  // Update placeholder text
+  const placeholders={
+    case:      {title:"e.g. R v Smith [2003] NSWCCA 123", ref:"e.g. [2003] NSWCCA 123", source:"e.g. NSWCCA"},
+    paper:     {title:"e.g. Proportionality in Australian Sentencing Law", ref:"e.g. (2022) 44 Syd LR 123", source:"e.g. Jane Smith"},
+    commentary:{title:"e.g. Commentary on R v XYZ", ref:"e.g. NSW Bar Association", source:"e.g. John Brown"},
+    draft:     {title:"e.g. Draft Sentencing Guideline — Robbery", ref:"e.g. v1.2 / Cabinet Paper", source:"e.g. DPP Office"},
+  };
+  const p=placeholders[type]||placeholders.case;
+  document.getElementById("manual-title").placeholder=p.title;
+  document.getElementById("manual-citation").placeholder=p.ref;
+  document.getElementById("manual-court").placeholder=p.source;
 }
 
-Tagging: use lowercase with spaces. Be consistent. Include both doctrinal and practice tags.
-The fullText field should contain the complete document text passed in.
+function buildIngestPrompt(text){
+  const typeDescriptions={
+    case:`a court judgment or case decision`,
+    paper:`a legal research paper or academic article`,
+    commentary:`legal commentary, analysis or opinion piece`,
+    draft:`a draft legal document, policy, or guideline`,
+  };
+  const typeDesc=typeDescriptions[docType]||typeDescriptions.case;
+
+  const caseSpecific=docType==="case"?`
+  "court": "Court name e.g. NSWCCA, HCA, NSWDC — leave blank if not a case",
+  "parties": ["Appellant","Respondent"],
+  "proceduralPosture": "One sentence: what was the court deciding",
+  "outcome": "What the court decided e.g. Appeal dismissed. Sentence reduced.",
+  "courtLevel": "trial / intermediate appellate / court of final appeal",`:
+  `
+  "court": "Publisher, journal, institution or organisation if applicable",
+  "parties": [],
+  "proceduralPosture": "One sentence: what this document is about and its purpose",
+  "outcome": "Main conclusion, recommendation or purpose of the document",
+  "courtLevel": "",`;
+
+  return`You are an expert Australian criminal law analyst. Analyse the following document, which is ${typeDesc}. Extract structured data and return ONLY valid JSON — no markdown, no code fences. Start with { end with }.
+
+{
+  "title": "Full title of the document",
+  "docType": "${docType}",
+  "citation": "Citation, reference, DOI or publication details if present — else 'not stated'",
+  "jurisdiction": "NSW / Commonwealth / Federal / n/a as appropriate",
+  "decisionDate": "ISO date e.g. 2003-06-15 or 'not stated'",${caseSpecific}
+  "legalIssues": ["Key legal issues, questions or arguments raised"],
+  "legalPrinciples": ["Legal principles, rules or propositions stated or argued — be thorough"],
+  "statutesCited": [{"act":"","section":"","jurisdiction":""}],
+  "casesCited": [{"caseName":"","citation":"","court":""}],
+  "conciseSummary": "150-250 word neutral professional summary suitable for a legal practitioner",
+  "detailedSummary": "600-900 word structured summary covering: Background | Key Arguments/Issues | Analysis/Reasoning | Conclusions/Outcome | Significance",
+  "quotes": [{"text":"Notable quote under 40 words","theme":"What this illustrates","pageRef":"Page X or unknown"}],
+  "offenceTypes": ["Relevant offence types if applicable — else empty array"],
+  "topics": ["Doctrinal and practice topics — be thorough e.g. objective seriousness, proportionality, rehabilitation"],
+  "primaryTopic": "Single most relevant topic for filing purposes",
+  "areaOfLaw": ["sentencing","evidence","procedure","criminal law" etc as appropriate],
+  "relevanceNotes": ["2-4 practical notes on when and why this document is useful"],
+  "embeddingInput": "Concatenation of title + citation + summary + issues + principles + topics for search"
+}
+
+Use lowercase with spaces for all tags. Be consistent. Extract all legal principles thoroughly — this is a research tool.
 
 DOCUMENT:
-`;
+${text}`;
+}
+
+
 
 // ── Ingest ──────────────────────────────────────────────────────
+function parseJSON(raw){
+  let clean=raw.trim()
+    .replace(/^```json\s*/i,"").replace(/^```\s*/,"").replace(/\s*```$/,"").trim();
+  const start=clean.indexOf("{");
+  const end=clean.lastIndexOf("}");
+  if(start===-1||end===-1) throw new Error("No JSON found");
+  return JSON.parse(clean.slice(start,end+1));
+}
+
 async function handleIngest(){
   const pasted=document.getElementById("ingest-text").value.trim();
   const raw=currentFileText||pasted;
   if(!raw) return;
   const userTopic=document.getElementById("topic-input").value.trim();
-
   const btn=document.getElementById("ingest-btn");
   const prog=document.getElementById("ingest-progress");
-  btn.disabled=true; prog.style.display="block"; hideError();
-
-  const steps=[
-    {text:"Sending to Claude for analysis…",done:false},
-    {text:"Extracting legal principles…",done:false},
-    {text:"Building knowledge base entry…",done:false},
-    {text:"Saving to Firestore…",done:false}
-  ];
-  renderProgress(steps,0);
-  const timer1=setTimeout(()=>renderProgress(steps,1),3000);
-  const timer2=setTimeout(()=>renderProgress(steps,2),7000);
+  btn.disabled=true;prog.style.display="block";prog.innerHTML="";hideError();
 
   try{
-    const truncated=raw.slice(0,18000);
-    const prompt=INGEST_PROMPT+truncated+"\n\nIMPORTANT: fullText field must contain the complete document text above.";
-    const raw_resp=await callClaude(prompt);
-    clearTimeout(timer1);clearTimeout(timer2);
-    renderProgress(steps,3);
-
+    const chunks=chunkText(raw);
+    const isBatch=chunks.length>1;
     let result;
-    try{
-      const clean=raw_resp.replace(/```json|```/g,"").trim();
-      result=JSON.parse(clean);
-    }catch(e){throw new Error("Could not parse AI response. Try again.");}
 
-    // Override primaryTopic if user specified one
+    if(!isBatch){
+      renderProgressMsg(prog,`Analysing ${docType}…`);
+      const resp=await callClaude(buildIngestPrompt(raw));
+      result=parseJSON(resp);
+    } else {
+      // Batch processing
+      renderProgressMsg(prog,`Large document detected (${Math.round(raw.length/1000)}k chars). Processing ${chunks.length} chunks…`);
+      const chunkResults=[];
+      let rollingContext=""; // accumulates a summary of prior chunks
+
+      for(let i=0;i<chunks.length;i++){
+        renderProgressMsg(prog,`Analysing chunk ${i+1} of ${chunks.length}${rollingContext?" (with prior context)":""}…`);
+        try{
+          const contextBlock=rollingContext
+            ? `CONTEXT FROM PRIOR CHUNKS:\n${rollingContext}\n\nThis context is provided so you understand what has already been covered. Do not repeat it — focus on extracting new content from the portion below.\n\n`
+            : "";
+          const resp=await callClaude(getChunkPrompt()+contextBlock+chunks[i]);
+          const parsed=parseJSON(resp);
+          chunkResults.push(parsed);
+
+          // Build rolling context summary from this chunk's result
+          const contextParts=[];
+          if(parsed.title) contextParts.push(`Title: ${parsed.title}`);
+          if(parsed.court) contextParts.push(`Court: ${parsed.court}`);
+          if(parsed.summaryNotes) contextParts.push(`Summary so far: ${parsed.summaryNotes}`);
+          if(parsed.legalIssues&&parsed.legalIssues.length) contextParts.push(`Issues found: ${parsed.legalIssues.slice(0,3).join("; ")}`);
+          if(parsed.legalPrinciples&&parsed.legalPrinciples.length) contextParts.push(`Principles found: ${parsed.legalPrinciples.slice(0,3).join("; ")}`);
+          if(parsed.outcome) contextParts.push(`Outcome so far: ${parsed.outcome}`);
+          rollingContext=contextParts.join("\n");
+        }catch(e){
+          console.warn("Chunk "+i+" failed:",e.message);
+        }
+        if(i<chunks.length-1) await new Promise(r=>setTimeout(r,800));
+      }
+      if(chunkResults.length===0) throw new Error("No chunks could be processed.");
+      renderProgressMsg(prog,`Merging ${chunkResults.length} chunks into single document…`);
+      const mergeInput=MERGE_PROMPT+chunkResults.map((r,i)=>`--- Chunk ${i+1} ---\n${JSON.stringify(r)}`).join("\n\n");
+      const mergeResp=await callClaude(mergeInput);
+      result=parseJSON(mergeResp);
+    }
+
     if(userTopic) result.primaryTopic=userTopic;
-    // Store full text
-    result.fullText=raw.slice(0,50000);
+    result.fullText=raw.slice(0,80000);
 
+    renderProgressMsg(prog,"Saving to Firestore…");
     const id=await fsSave(result);
-    const withId={...result,_id:id};
-    cases.unshift(withId);
+    cases.unshift({...result,_id:id});
     applyFiltersAndSearch();
-    updateStats();
-    updateTopicsList();
-    updateTopicDatalist();
-    setDbStatus(true);
+    updateStats();updateTopicsList();updateTopicDatalist();setDbStatus(true);
 
-    // Reset
     document.getElementById("ingest-text").value="";
     document.getElementById("topic-input").value="";
     currentFileText="";
@@ -489,15 +832,19 @@ async function handleIngest(){
     prog.style.display="none";
     showToast(`"${result.title}" saved ✓`,"success");
   }catch(e){
-    clearTimeout(timer1);clearTimeout(timer2);
     prog.style.display="none";
     btn.disabled=false;
     showError("Failed: "+e.message);
   }
 }
 
+function renderProgressMsg(prog,msg){
+  prog.innerHTML=`<div class="prog-step active"><div class="prog-dot"></div><span>${esc(msg)}</span><span class="spin" style="margin-left:6px;font-size:11px;">⟳</span></div>`;
+}
+
 function renderProgress(steps,activeIdx){
   const el=document.getElementById("prog-steps");
+  if(!el) return;
   el.innerHTML=steps.map((s,i)=>`
     <div class="prog-step ${i<activeIdx?"done":i===activeIdx?"active":""}">
       <div class="prog-dot"></div>
@@ -505,6 +852,7 @@ function renderProgress(steps,activeIdx){
       ${i===activeIdx?'<span class="spin" style="margin-left:4px;font-size:11px;">⟳</span>':""}
     </div>`).join("");
 }
+
 
 // ── Ask AI ──────────────────────────────────────────────────────
 async function handleAsk(){
@@ -817,7 +1165,7 @@ function renderCardView(list,sort){
         </div>
       </div>
       <p class="fm" style="color:#57534e;font-size:10px;margin-bottom:7px;">${esc(doc.citation||"no citation")} · ${esc(doc.decisionDate||"")}</p>
-      ${doc.primaryTopic?`<div style="margin-bottom:8px;"><span class="topic-badge" onclick="event.stopPropagation();applyFilter('topic','${esc(doc.primaryTopic)}')">◈ ${esc(doc.primaryTopic)}</span></div>`:""}
+      ${doc.primaryTopic?`<div style="margin-bottom:8px;display:flex;align-items:center;gap:6px;"><span class="topic-badge" onclick="event.stopPropagation();applyFilter('topic','${esc(doc.primaryTopic)}')">◈ ${esc(doc.primaryTopic)}</span>${doc.docType&&doc.docType!=="case"?`<span class="fm" style="color:#57534e;font-size:9px;padding:1px 6px;border:1px solid rgba(87,83,78,.3);border-radius:2px;">${esc(doc.docType)}</span>`:""}</div>`:`${doc.docType&&doc.docType!=="case"?`<div style="margin-bottom:6px;"><span class="fm" style="color:#57534e;font-size:9px;padding:1px 6px;border:1px solid rgba(87,83,78,.3);border-radius:2px;">${esc(doc.docType)}</span></div>`:""}`}
       <p class="fb lc2" style="color:#78716c;font-size:12px;line-height:1.6;margin-bottom:8px;">${esc(doc.conciseSummary||"")}</p>
       <div style="display:flex;flex-wrap:wrap;gap:4px;">
         ${(doc.offenceTypes||[]).slice(0,2).map(t=>`<span class="tag tag-red" onclick="event.stopPropagation();applyFilter('offence','${esc(t)}')">${esc(t)}</span>`).join("")}
@@ -1069,6 +1417,401 @@ function checkLayout(){
 }
 window.addEventListener("resize",checkLayout);
 checkLayout();
+
+// ════════════════════════════════════════════════════════════════
+// BRIEF ANALYSIS
+// ════════════════════════════════════════════════════════════════
+
+// ── State ────────────────────────────────────────────────────────
+let briefDocs=[];          // {id, name, text, size, uploadedAt}
+let briefCurrentUser=null;
+let briefSystemPrompt="";
+const BRIEF_COLLECTION="briefs";
+const BRIEF_ENC_KEY_PREFIX="brief_enc_";
+
+// ── Auth ─────────────────────────────────────────────────────────
+function waitForAuth(cb){
+  if(window._fbAuthReady) cb();
+  else document.addEventListener("fbAuthReady",cb,{once:true});
+}
+
+function handleSignIn(){
+  const email=document.getElementById("login-email").value.trim();
+  const pass=document.getElementById("login-password").value;
+  const btn=document.getElementById("login-btn");
+  const err=document.getElementById("login-error");
+  if(!email||!pass){err.textContent="Please enter email and password.";err.style.display="block";return;}
+  btn.disabled=true;btn.textContent="Signing in…";err.style.display="none";
+  waitForAuth(async()=>{
+    try{
+      await window._fbSignIn(email,pass);
+      // onAuthStateChanged handles the rest
+    }catch(e){
+      err.textContent=e.message.replace("Firebase: ","").replace(/\(auth\/.*\)/,"").trim();
+      err.style.display="block";
+      btn.disabled=false;btn.textContent="Sign In →";
+    }
+  });
+}
+
+function handleSignOut(){
+  waitForAuth(async()=>{
+    await window._fbSignOut();
+    briefCurrentUser=null;
+    briefDocs=[];
+    showBriefLoginGate();
+    document.getElementById("auth-status").style.display="none";
+  });
+}
+
+function onAuthChanged(user){
+  if(user){
+    briefCurrentUser=user;
+    document.getElementById("auth-status").style.display="flex";
+    document.getElementById("auth-email").textContent=user.email;
+    showBriefControls();
+    loadBriefDocs();
+    loadBriefSystemPrompt();
+  } else {
+    briefCurrentUser=null;
+    showBriefLoginGate();
+    document.getElementById("auth-status").style.display="none";
+  }
+}
+
+waitForAuth(()=>window._fbOnAuth(onAuthChanged));
+
+function showBriefLoginGate(){
+  document.getElementById("brief-login-gate").style.display="block";
+  document.getElementById("brief-controls").style.display="none";
+}
+function showBriefControls(){
+  document.getElementById("brief-login-gate").style.display="none";
+  document.getElementById("brief-controls").style.display="block";
+}
+
+// ── Encryption (AES-256 via CryptoJS) ────────────────────────────
+function getEncKey(){
+  // Key derived from user UID — different for every user
+  if(!briefCurrentUser) throw new Error("Not authenticated");
+  return CryptoJS.SHA256(briefCurrentUser.uid+"-brief-key").toString();
+}
+function encrypt(text){
+  return CryptoJS.AES.encrypt(text,getEncKey()).toString();
+}
+function decrypt(ciphertext){
+  return CryptoJS.AES.decrypt(ciphertext,getEncKey()).toString(CryptoJS.enc.Utf8);
+}
+
+// ── Firestore for brief docs (behind auth token) ─────────────────
+async function getAuthToken(){
+  // Use REST API with Firebase Auth ID token for security
+  if(!briefCurrentUser) throw new Error("Not authenticated");
+  // For REST API we use the API key but Firestore rules enforce auth
+  return API_KEY_FS;
+}
+
+async function fsBriefSave(data){
+  const key=await getAuthToken();
+  const fields={};
+  // Encrypt sensitive fields
+  const encData={
+    ...data,
+    text:encrypt(data.text||""),
+    name:data.name, // filename not encrypted
+    size:data.size,
+    uploadedAt:data.uploadedAt,
+    userId:briefCurrentUser.uid,
+  };
+  for(const[k,v]of Object.entries(encData))fields[k]=toFsVal(v);
+  const r=await fetch(`${FS_BASE}/${BRIEF_COLLECTION}?key=${key}`,{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({fields})
+  });
+  if(!r.ok) throw new Error(await r.text());
+  const d=await r.json();
+  return d.name.split("/").pop();
+}
+
+async function fsBriefLoad(){
+  if(!briefCurrentUser) return[];
+  const key=await getAuthToken();
+  const r=await fetch(`${FS_BASE}/${BRIEF_COLLECTION}?key=${key}&pageSize=100`);
+  if(!r.ok) return[];
+  const d=await r.json();
+  const all=(d.documents||[]).map(fsToObj);
+  // Filter to current user's docs
+  return all.filter(doc=>doc.userId===briefCurrentUser.uid).map(doc=>({
+    ...doc,
+    text:doc.text?decrypt(doc.text):"",
+  }));
+}
+
+async function fsBriefDelete(id){
+  const key=await getAuthToken();
+  const r=await fetch(`${FS_BASE}/${BRIEF_COLLECTION}/${id}?key=${key}`,{method:"DELETE"});
+  if(!r.ok) throw new Error(await r.text());
+}
+
+async function fsBriefSaveSystemPrompt(prompt){
+  const key=await getAuthToken();
+  const id="sysprompt_"+briefCurrentUser.uid;
+  const fields={userId:toFsVal(briefCurrentUser.uid),prompt:toFsVal(encrypt(prompt)),updatedAt:toFsVal(new Date().toISOString())};
+  await fetch(`${FS_BASE}/briefsettings/${id}?key=${key}`,{
+    method:"PATCH",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({fields})
+  });
+}
+
+async function fsBriefLoadSystemPrompt(){
+  const key=await getAuthToken();
+  const id="sysprompt_"+briefCurrentUser.uid;
+  const r=await fetch(`${FS_BASE}/briefsettings/${id}?key=${key}`);
+  if(!r.ok) return "";
+  const d=await r.json();
+  const enc=fromFsVal(d.fields?.prompt);
+  return enc?decrypt(enc):"";
+}
+
+// ── Load / Save ───────────────────────────────────────────────────
+async function loadBriefDocs(){
+  try{
+    briefDocs=await fsBriefLoad();
+    renderBriefDocList();
+    updateBriefQueryBtn();
+  }catch(e){console.error("Brief load error:",e);}
+}
+
+async function loadBriefSystemPrompt(){
+  try{
+    const p=await fsBriefLoadSystemPrompt();
+    document.getElementById("brief-system-prompt").value=p||"";
+    briefSystemPrompt=p||"";
+  }catch(e){}
+}
+
+async function saveBriefSystemPrompt(){
+  const p=document.getElementById("brief-system-prompt").value.trim();
+  try{
+    await fsBriefSaveSystemPrompt(p);
+    briefSystemPrompt=p;
+    showToast("System prompt saved ✓","success");
+  }catch(e){showError("Failed to save: "+e.message);}
+}
+
+// ── File upload ───────────────────────────────────────────────────
+function handleBriefDragLeave(){document.getElementById("brief-drop-zone").classList.remove("drag-over");}
+function handleBriefDrop(e){
+  e.preventDefault();
+  document.getElementById("brief-drop-zone").classList.remove("drag-over");
+  handleBriefFiles({target:{files:e.dataTransfer.files}});
+}
+async function handleBriefFiles(event){
+  if(!briefCurrentUser){showError("Please sign in to upload brief documents.");return;}
+  const files=Array.from(event.target.files||[]);
+  if(!files.length) return;
+  const status=document.getElementById("brief-upload-status");
+  status.style.display="block";
+  for(let i=0;i<files.length;i++){
+    const file=files[i];
+    status.textContent=`Reading ${file.name} (${i+1}/${files.length})…`;
+    try{
+      let text="";
+      if(file.name.endsWith(".pdf")) text=await extractPDF(file);
+      else if(file.name.endsWith(".docx")||file.name.endsWith(".doc")) text=await extractDOCX(file);
+      else{showError("Unsupported: "+file.name);continue;}
+      status.textContent=`Saving ${file.name}…`;
+      const id=await fsBriefSave({name:file.name,text,size:file.size,uploadedAt:new Date().toISOString()});
+      briefDocs.unshift({_id:id,name:file.name,text,size:file.size,uploadedAt:new Date().toISOString(),userId:briefCurrentUser.uid});
+      renderBriefDocList();
+    }catch(e){showError("Failed to process "+file.name+": "+e.message);}
+  }
+  status.textContent=`✓ ${files.length} file${files.length!==1?"s":""} added to library`;
+  document.getElementById("brief-file-input").value="";
+  updateBriefQueryBtn();
+  setTimeout(()=>{status.style.display="none";},3000);
+}
+
+// ── Document list ─────────────────────────────────────────────────
+function renderBriefDocList(){
+  const list=document.getElementById("brief-doc-list");
+  const count=document.getElementById("brief-doc-count");
+  count.textContent=`${briefDocs.length} document${briefDocs.length!==1?"s":""}`;
+  if(briefDocs.length===0){
+    list.innerHTML=`<p class="fm" style="color:#44403c;font-size:11px;padding:12px;text-align:center;">No documents yet. Upload a brief above.</p>`;
+    return;
+  }
+  list.innerHTML=briefDocs.map((doc,i)=>`
+    <div class="brief-doc-item" id="brief-item-${i}" onclick="toggleBriefDoc(${i})">
+      <input type="checkbox" id="brief-chk-${i}" onclick="event.stopPropagation();toggleBriefDoc(${i})"/>
+      <div style="flex:1;min-width:0;">
+        <p class="fm" style="color:#d6d3d1;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(doc.name)}</p>
+        <p class="fm" style="color:#44403c;font-size:9px;">${Math.round((doc.text||"").length/1000)}k chars · ${doc.uploadedAt?new Date(doc.uploadedAt).toLocaleDateString("en-AU"):""}</p>
+      </div>
+      <button onclick="event.stopPropagation();deleteBriefDoc(${i})" style="background:none;border:none;color:#292524;cursor:pointer;font-size:11px;padding:2px;" onmouseover="this.style.color='#fca5a5'" onmouseout="this.style.color='#292524'" title="Delete">✕</button>
+    </div>`).join("");
+}
+
+function toggleBriefDoc(i){
+  const item=document.getElementById("brief-item-"+i);
+  const chk=document.getElementById("brief-chk-"+i);
+  chk.checked=!chk.checked;
+  item.classList.toggle("selected-doc",chk.checked);
+  updateBriefQueryBtn();
+}
+
+function getSelectedBriefDocs(){
+  return briefDocs.filter((_,i)=>{
+    const chk=document.getElementById("brief-chk-"+i);
+    return chk&&chk.checked;
+  });
+}
+
+function updateBriefQueryBtn(){
+  const btn=document.getElementById("brief-query-btn");
+  if(!btn) return;
+  const selected=getSelectedBriefDocs();
+  btn.disabled=selected.length===0;
+  btn.textContent=selected.length>0?`Analyse ${selected.length} Document${selected.length!==1?"s":""} →`:"Analyse Selected Documents →";
+}
+
+async function deleteBriefDoc(i){
+  const doc=briefDocs[i];
+  if(!confirm(`Delete "${doc.name}" from brief library?\n\nThis cannot be undone.`)) return;
+  try{
+    await fsBriefDelete(doc._id);
+    briefDocs.splice(i,1);
+    renderBriefDocList();
+    updateBriefQueryBtn();
+    showToast("Document deleted","success");
+  }catch(e){showError("Delete failed: "+e.message);}
+}
+
+// ── Quick prompt ──────────────────────────────────────────────────
+function setBriefPrompt(text){
+  document.getElementById("brief-custom-prompt").value=text;
+  document.getElementById("brief-custom-prompt").focus();
+}
+
+// ── Query ─────────────────────────────────────────────────────────
+async function handleBriefQuery(){
+  const selected=getSelectedBriefDocs();
+  const prompt=document.getElementById("brief-custom-prompt").value.trim();
+  if(!selected.length||!prompt) return;
+
+  const btn=document.getElementById("brief-query-btn");
+  btn.disabled=true;btn.textContent="Analysing…";
+
+  try{
+    const sysPrompt=document.getElementById("brief-system-prompt").value.trim();
+    const docsContext=selected.map(d=>`=== DOCUMENT: ${d.name} ===\n${d.text.slice(0,20000)}`).join("\n\n");
+    const fullPrompt=(sysPrompt?`BACKGROUND CONTEXT:\n${sysPrompt}\n\n`:"")
+      +`DOCUMENTS:\n${docsContext}\n\nQUESTION / TASK:\n${prompt}\n\nProvide a thorough, well-structured response suitable for a legal practitioner.`;
+
+    const response=await callClaude(fullPrompt);
+    addBriefResult(prompt,response,selected.map(d=>d.name));
+    document.getElementById("brief-custom-prompt").value="";
+  }catch(e){showError("Analysis failed: "+e.message);}
+  finally{
+    updateBriefQueryBtn();
+  }
+}
+
+function addBriefResult(query,response,docNames){
+  const results=document.getElementById("brief-results");
+  const clearBtn=document.getElementById("brief-clear-btn");
+  clearBtn.style.display="block";
+
+  // Remove empty state
+  const empty=results.querySelector('[style*="dashed"]');
+  if(empty) empty.remove();
+
+  const id="br-"+Date.now();
+  const card=document.createElement("div");
+  card.className="brief-result-card fade-in";
+  card.id=id;
+  card.innerHTML=`
+    <div class="brief-result-header">
+      <div style="flex:1;min-width:0;">
+        <p class="fm" style="color:#c4b5fd;font-size:11px;font-weight:500;">${esc(query.slice(0,120))}${query.length>120?"…":""}</p>
+        <p class="fm" style="color:#44403c;font-size:9px;margin-top:2px;">Docs: ${docNames.map(esc).join(", ")}</p>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="copy-btn" onclick="copyBriefResult('${id}')">⎘ Copy</button>
+        <button class="copy-btn" onclick="document.getElementById('${id}').remove();checkBriefEmpty()">✕</button>
+      </div>
+    </div>
+    <div style="padding:14px;" id="${id}-body">
+      <div class="fb" style="color:#d6d3d1;font-size:13px;line-height:1.8;white-space:pre-line;">${esc(response)}</div>
+    </div>`;
+  results.insertBefore(card,results.firstChild);
+}
+
+function copyBriefResult(id){
+  const body=document.getElementById(id+"-body");
+  if(!body) return;
+  const text=body.innerText||body.textContent||"";
+  navigator.clipboard.writeText(text).then(()=>showToast("Copied to clipboard ✓","success")).catch(()=>{
+    // Fallback
+    const ta=document.createElement("textarea");
+    ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);
+    showToast("Copied ✓","success");
+  });
+}
+
+function checkBriefEmpty(){
+  const results=document.getElementById("brief-results");
+  if(results.children.length===0){
+    results.innerHTML=`<div style="border:1px dashed rgba(68,64,60,.4);border-radius:4px;padding:40px;text-align:center;"><p class="fd" style="color:#292524;font-size:14px;font-style:italic;">Select documents from the library and run a query.</p></div>`;
+    document.getElementById("brief-clear-btn").style.display="none";
+  }
+}
+
+function clearBriefResults(){
+  if(!confirm("Clear all analysis results?")) return;
+  document.getElementById("brief-results").innerHTML=`<div style="border:1px dashed rgba(68,64,60,.4);border-radius:4px;padding:40px;text-align:center;"><p class="fd" style="color:#292524;font-size:14px;font-style:italic;">Select documents from the library and run a query.</p></div>`;
+  document.getElementById("brief-clear-btn").style.display="none";
+}
+
+// ── Tab switch extension ──────────────────────────────────────────
+// Override switchTab to handle brief tab
+const _origSwitchTab=switchTab;
+window.switchTab=function(tab){
+  // Handle brief tab specially
+  const briefWs=document.getElementById("brief-workspace");
+  const casesCont=document.getElementById("cases-container");
+  const casesHead=document.querySelector('[id="cases-heading"]')?.closest('[style*="border-bottom"]');
+
+  if(tab==="brief"){
+    // Show brief workspace in right col, hide cases
+    if(briefWs) briefWs.style.display="block";
+    if(casesCont) casesCont.style.display="none";
+    if(casesHead) casesHead.style.display="none";
+    // Update tab styling
+    ["ingest","ask","topics","brief"].forEach(t=>{
+      const btn=document.getElementById("tab-"+t);
+      if(btn){btn.className="tab"+(t==="brief"?" active":"");if(t==="brief")btn.style.color="#a78bfa";}
+    });
+    // Show correct left panel
+    ["panel-ingest","panel-ask","panel-topics","panel-brief","error-box"].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.style.display=(id==="panel-brief"||id==="error-box")?"block":"none";
+    });
+    // Hide stats when in brief mode
+    const stats=document.querySelector('[id="stats-grid"]')?.closest('[style*="border:1px solid"]');
+    if(stats) stats.style.display="none";
+    activeTab="brief";
+  } else {
+    // Restore cases view
+    if(briefWs) briefWs.style.display="none";
+    if(casesCont) casesCont.style.display="block";
+    if(casesHead) casesHead.style.display="flex";
+    const stats=document.querySelector('[id="stats-grid"]')?.closest('[style*="border:1px solid"]');
+    if(stats) stats.style.display="block";
+    _origSwitchTab(tab);
+  }
+};
+
 </script>
 </body>
 </html>

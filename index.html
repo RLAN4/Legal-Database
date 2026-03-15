@@ -117,7 +117,7 @@ hr.d{border-color:rgba(68,64,60,.4);margin:0;}
       </div>
       <div>
         <h1 class="fd" style="color:#fde68a;font-size:17px;line-height:1;">APM Legal Database</h1>
-        <p class="fm" style="color:#44403c;font-size:9px;letter-spacing:.14em;margin-top:1px;">NSW CRIMINAL LAW · GEMINI 1.5</p>
+        <p class="fm" style="color:#44403c;font-size:9px;letter-spacing:.14em;margin-top:1px;">NSW CRIMINAL LAW · CLAUDE AI</p>
       </div>
     </div>
     <!-- Search bar in header -->
@@ -156,7 +156,7 @@ hr.d{border-color:rgba(68,64,60,.4);margin:0;}
 
     <!-- INGEST PANEL -->
     <div id="panel-ingest">
-      <p class="fm" style="color:#57534e;font-size:11px;line-height:1.7;margin-bottom:12px;">Upload a PDF or Word doc, or paste text. Gemini AI will extract and save to Firestore.</p>
+      <p class="fm" style="color:#57534e;font-size:11px;line-height:1.7;margin-bottom:12px;">Upload a PDF or Word doc, or paste text. Claude AI will extract and save to Firestore.</p>
 
       <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()"
         ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
@@ -192,10 +192,10 @@ hr.d{border-color:rgba(68,64,60,.4);margin:0;}
 
     <!-- ASK AI PANEL -->
     <div id="panel-ask" style="display:none;">
-      <p class="fm" style="color:#57534e;font-size:11px;line-height:1.7;margin-bottom:12px;">Ask any legal question. Gemini will search across all ingested cases and return relevant answers with links.</p>
+      <p class="fm" style="color:#57534e;font-size:11px;line-height:1.7;margin-bottom:12px;">Ask any legal question. Claude will search across all ingested cases and return relevant answers with links.</p>
       <textarea id="ask-text" class="inp" style="min-height:100px;font-family:'Libre Baskerville',Georgia,serif;font-size:13px;line-height:1.6;" placeholder="e.g. What cases deal with parity in sentencing for drug supply? What is the standard non-parole period for armed robbery?"></textarea>
       <div style="margin-top:8px;">
-        <button class="btn-primary" id="ask-btn" onclick="handleAsk()">Ask Gemini →</button>
+        <button class="btn-primary" id="ask-btn" onclick="handleAsk()">Ask Claude →</button>
       </div>
       <div id="ask-result" style="display:none;margin-top:14px;"></div>
     </div>
@@ -259,9 +259,8 @@ hr.d{border-color:rgba(68,64,60,.4);margin:0;}
 const PROJECT_ID = "apm-legal-database";
 const COLLECTION = "cases";
 const API_KEY_FS  = "AIzaSyAtRaBvfTbme3tm4bZfWbcV4FOBosdCtnc";
-const GEMINI_KEY  = "AIzaSyBba6mviFCcJXoUY67yo3CY3xrj_bCikDY";
+const ANTHROPIC_PROXY = "https://apm-proxy.abrammeredith.workers.dev";
 const FS_BASE     = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
-const GEMINI_URL  = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
 
 if(typeof pdfjsLib!=="undefined") pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
@@ -380,12 +379,22 @@ function handleDragLeave(){document.getElementById("drop-zone").classList.remove
 function handleDrop(e){e.preventDefault();document.getElementById("drop-zone").classList.remove("drag-over");const f=e.dataTransfer.files[0];if(f)processFile(f);}
 document.getElementById("ingest-text").addEventListener("input",function(){document.getElementById("ingest-btn").disabled=!this.value.trim()&&!currentFileText;});
 
-// ── Gemini AI ───────────────────────────────────────────────────
-async function callGemini(prompt){
-  const r=await fetch(GEMINI_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.1,maxOutputTokens:8192}})});
-  if(!r.ok){const e=await r.text();throw new Error(e);}
-  const d=await r.json();
-  return d.candidates?.[0]?.content?.parts?.[0]?.text||"";
+// ── Anthropic API (via Cloudflare proxy) ────────────────────────
+async function callClaude(prompt){
+  const r=await fetch(ANTHROPIC_PROXY,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      model:"claude-sonnet-4-20250514",
+      max_tokens:4000,
+      messages:[{role:"user",content:prompt}]
+    })
+  });
+  const text=await r.text();
+  if(!r.ok) throw new Error(text);
+  const d=JSON.parse(text);
+  if(d.error) throw new Error(JSON.stringify(d.error));
+  return d.content?.[0]?.text||"";
 }
 
 const INGEST_PROMPT=`You are an expert Australian criminal law analyst. Analyse the following legal document and extract structured data. Return ONLY valid JSON with no markdown, no explanation, no code blocks.
@@ -434,7 +443,7 @@ async function handleIngest(){
   btn.disabled=true; prog.style.display="block"; hideError();
 
   const steps=[
-    {text:"Sending to Gemini for analysis…",done:false},
+    {text:"Sending to Claude for analysis…",done:false},
     {text:"Extracting legal principles…",done:false},
     {text:"Building knowledge base entry…",done:false},
     {text:"Saving to Firestore…",done:false}
@@ -446,7 +455,7 @@ async function handleIngest(){
   try{
     const truncated=raw.slice(0,18000);
     const prompt=INGEST_PROMPT+truncated+"\n\nIMPORTANT: fullText field must contain the complete document text above.";
-    const raw_resp=await callGemini(prompt);
+    const raw_resp=await callClaude(prompt);
     clearTimeout(timer1);clearTimeout(timer2);
     renderProgress(steps,3);
 
@@ -533,7 +542,7 @@ Answer in this format:
 ## Most Relevant Cases
 [List the index numbers and titles of the most relevant cases]`;
 
-    const response=await callGemini(prompt);
+    const response=await callClaude(prompt);
 
     // Parse relevant case indices from response
     const idxMatches=[...response.matchAll(/\[(\d+)\]/g)].map(m=>parseInt(m[1])).filter(i=>i>=0&&i<cases.length);
@@ -541,7 +550,7 @@ Answer in this format:
 
     result.innerHTML=`
       <div style="border:1px solid rgba(87,83,78,.4);background:rgba(28,25,23,.5);border-radius:4px;padding:16px;">
-        <p class="sl" style="margin-bottom:10px;">Gemini's Answer</p>
+        <p class="sl" style="margin-bottom:10px;">Claude's Answer</p>
         <div class="fb" style="color:#d6d3d1;font-size:13px;line-height:1.8;white-space:pre-line;">${esc(response)}</div>
         ${uniqueIdxs.length>0?`
         <div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(68,64,60,.4);">
@@ -561,9 +570,9 @@ Answer in this format:
       </div>`;
     result.style.display="block";
   }catch(e){
-    showError("Ask AI failed: "+e.message);
+    showError("Ask failed: "+e.message);
   }finally{
-    btn.disabled=false;btn.textContent="Ask Gemini →";
+    btn.disabled=false;btn.textContent="Ask Claude →";
   }
 }
 

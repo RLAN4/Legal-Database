@@ -1,653 +1,885 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>APM Legal Database</title>
-
-<!-- Tailwind -->
 <script src="https://cdn.tailwindcss.com"></script>
-
-<!-- PDF.js for PDF parsing -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-
-<!-- Mammoth.js for Word doc parsing -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Mono:wght@300;400;500&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
-
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Mono:wght@300;400;500&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"/>
 <style>
-  * { box-sizing: border-box; }
-  body { background: #0c0b09; font-family: 'DM Mono', monospace; margin: 0; }
-  .font-display { font-family: 'Playfair Display', Georgia, serif; }
-  .font-body    { font-family: 'Libre Baskerville', Georgia, serif; }
-  .font-mono    { font-family: 'DM Mono', monospace; }
+*{box-sizing:border-box;}
+body{background:#0c0b09;font-family:'DM Mono',monospace;margin:0;color:#d6d3d1;}
+.fd{font-family:'Playfair Display',Georgia,serif;}
+.fb{font-family:'Libre Baskerville',Georgia,serif;}
+.fm{font-family:'DM Mono',monospace;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:#1c1917;}
+::-webkit-scrollbar-thumb{background:#57534e;border-radius:3px;}
+textarea{resize:vertical;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.fade-in{animation:fadeIn 0.3s ease forwards;}
+.toast-in{animation:toastIn 0.3s ease forwards;}
+.spin{animation:spin 1s linear infinite;display:inline-block;}
 
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: #1c1917; }
-  ::-webkit-scrollbar-thumb { background: #57534e; border-radius: 3px; }
+/* Tabs */
+.tab{padding:10px 18px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;border-bottom:2px solid transparent;color:#78716c;cursor:pointer;background:none;border-top:none;border-left:none;border-right:none;transition:color .2s;}
+.tab:hover{color:#a8a29e;}
+.tab.active{border-bottom-color:#d97706;color:#fde68a;}
 
-  textarea { resize: vertical; font-family: 'Libre Baskerville', Georgia, serif; }
+/* Tags */
+.tag{display:inline-block;padding:2px 8px;font-size:10px;border-radius:2px;font-family:'DM Mono',monospace;letter-spacing:.04em;border:1px solid;cursor:pointer;transition:all .15s;}
+.tag:hover{opacity:.8;transform:translateY(-1px);}
+.tag-amber{background:rgba(120,53,15,.3);color:#fcd34d;border-color:rgba(180,83,9,.4);}
+.tag-red{background:rgba(127,29,29,.3);color:#fca5a5;border-color:rgba(185,28,28,.4);}
+.tag-blue{background:rgba(23,37,84,.3);color:#93c5fd;border-color:rgba(29,78,216,.4);}
+.tag-green{background:rgba(6,46,26,.3);color:#6ee7b7;border-color:rgba(4,120,87,.4);}
+.tag-purple{background:rgba(46,16,101,.3);color:#d8b4fe;border-color:rgba(109,40,217,.4);}
 
-  @keyframes toastIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
-  .toast-enter { animation: toastIn 0.3s ease; }
+/* Cards */
+.case-card{border:1px solid rgba(87,83,78,.45);background:rgba(28,25,23,.6);border-radius:4px;padding:18px;cursor:pointer;transition:all .25s;}
+.case-card:hover{background:rgba(41,37,36,.85);border-color:rgba(180,83,9,.4);}
+.case-card.selected{border-color:#d97706;background:rgba(41,37,36,.9);}
 
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .spinner { animation: spin 1s linear infinite; display: inline-block; }
+/* Buttons */
+.btn-primary{width:100%;padding:11px;background:rgba(120,53,15,.3);border:1px solid rgba(180,83,9,.5);color:#fcd34d;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;border-radius:3px;transition:all .2s;}
+.btn-primary:hover:not(:disabled){background:rgba(146,64,14,.4);border-color:rgba(217,119,6,.6);}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;}
+.btn-secondary{padding:8px 14px;background:rgba(41,37,36,.6);border:1px solid rgba(87,83,78,.5);color:#d6d3d1;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;border-radius:3px;transition:all .2s;}
+.btn-secondary:hover:not(:disabled){background:rgba(68,64,60,.7);}
+.btn-secondary:disabled{opacity:.4;cursor:not-allowed;}
+.btn-ghost{background:none;border:none;color:#78716c;cursor:pointer;font-size:11px;font-family:'DM Mono',monospace;transition:color .2s;padding:2px 4px;}
+.btn-ghost:hover{color:#fcd34d;}
 
-  .tab-btn { padding: 10px 16px; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 2px solid transparent; color: #78716c; cursor: pointer; background: none; border-top: none; border-left: none; border-right: none; transition: color 0.2s; }
-  .tab-btn:hover { color: #a8a29e; }
-  .tab-btn.active { border-bottom-color: #d97706; color: #fde68a; }
+/* Inputs */
+.inp{width:100%;background:rgba(28,25,23,.7);border:1px solid rgba(87,83,78,.5);border-radius:3px;padding:10px 14px;color:#d6d3d1;font-size:13px;outline:none;transition:border-color .2s;font-family:'DM Mono',monospace;}
+.inp:focus{border-color:rgba(180,83,9,.5);}
+.inp::placeholder{color:#44403c;}
 
-  .tag { display: inline-block; padding: 2px 8px; font-size: 11px; border-radius: 3px; font-family: 'DM Mono', monospace; letter-spacing: 0.04em; border: 1px solid; }
-  .tag-amber { background: rgba(120,53,15,0.3); color: #fcd34d; border-color: rgba(180,83,9,0.4); }
-  .tag-red   { background: rgba(127,29,29,0.3); color: #fca5a5; border-color: rgba(185,28,28,0.4); }
-  .tag-blue  { background: rgba(23,37,84,0.3);  color: #93c5fd; border-color: rgba(29,78,216,0.4); }
-  .tag-green { background: rgba(6,46,26,0.3);   color: #6ee7b7; border-color: rgba(4,120,87,0.4); }
+/* Drop zone */
+.drop-zone{border:2px dashed rgba(87,83,78,.4);border-radius:4px;padding:24px;text-align:center;transition:all .2s;cursor:pointer;}
+.drop-zone:hover,.drop-zone.drag-over{border-color:rgba(180,83,9,.6);background:rgba(120,53,15,.08);}
 
-  .card { border: 1px solid rgba(87,83,78,0.5); background: rgba(28,25,23,0.6); border-radius: 4px; padding: 20px; cursor: pointer; transition: all 0.25s; }
-  .card:hover { background: rgba(41,37,36,0.8); border-color: rgba(180,83,9,0.4); }
+/* Modal */
+.modal-bg{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.78);backdrop-filter:blur(6px);display:flex;align-items:flex-start;justify-content:flex-end;padding:12px;}
+.modal-panel{width:100%;max-width:720px;height:100%;overflow-y:auto;background:#0e0d0b;border:1px solid #44403c;border-radius:4px;scrollbar-width:thin;scrollbar-color:#57534e #1c1917;}
 
-  .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* Section label */
+.sl{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#78716c;margin-bottom:6px;font-family:'DM Mono',monospace;}
 
-  .btn-primary { width: 100%; padding: 12px; background: rgba(120,53,15,0.3); border: 1px solid rgba(180,83,9,0.5); color: #fcd34d; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; border-radius: 4px; transition: all 0.2s; }
-  .btn-primary:hover:not(:disabled) { background: rgba(146,64,14,0.4); border-color: rgba(217,119,6,0.6); }
-  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+/* Divider */
+hr.d{border-color:rgba(68,64,60,.4);margin:0;}
 
-  .btn-secondary { width: 100%; padding: 12px; background: rgba(41,37,36,0.6); border: 1px solid rgba(87,83,78,0.5); color: #d6d3d1; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; border-radius: 4px; transition: all 0.2s; }
-  .btn-secondary:hover:not(:disabled) { background: rgba(68,64,60,0.7); }
-  .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+/* Filter bar */
+.filter-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:rgba(120,53,15,.25);border:1px solid rgba(180,83,9,.4);border-radius:20px;color:#fcd34d;font-size:10px;font-family:'DM Mono',monospace;cursor:pointer;}
+.filter-chip button{background:none;border:none;color:#fcd34d;cursor:pointer;font-size:13px;line-height:1;padding:0;}
 
-  .input-area { width: 100%; background: rgba(28,25,23,0.6); border: 1px solid rgba(87,83,78,0.5); border-radius: 4px; padding: 16px; color: #d6d3d1; font-size: 14px; line-height: 1.7; outline: none; transition: border-color 0.2s; }
-  .input-area:focus { border-color: rgba(180,83,9,0.5); }
-  .input-area::placeholder { color: #57534e; }
+/* Topic badge */
+.topic-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:rgba(46,16,101,.25);border:1px solid rgba(109,40,217,.35);border-radius:2px;color:#d8b4fe;font-size:10px;font-family:'DM Mono',monospace;}
+.topic-badge button{background:none;border:none;color:#a78bfa;cursor:pointer;font-size:11px;padding:0;line-height:1;}
 
-  .modal-overlay { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); display: flex; align-items: flex-start; justify-content: flex-end; padding: 16px; }
-  .modal-panel { width: 100%; max-width: 680px; height: 100%; overflow-y: auto; background: #0c0b09; border: 1px solid #57534e; border-radius: 4px; scrollbar-width: thin; scrollbar-color: #78716c #1c1917; }
+/* Search result card */
+.search-result-card{border:1px solid rgba(87,83,78,.4);background:rgba(28,25,23,.5);border-radius:4px;padding:16px;cursor:pointer;transition:all .2s;}
+.search-result-card:hover{border-color:rgba(180,83,9,.4);background:rgba(41,37,36,.7);}
 
-  .drop-zone { border: 2px dashed rgba(87,83,78,0.5); border-radius: 4px; padding: 32px; text-align: center; transition: all 0.2s; cursor: pointer; }
-  .drop-zone:hover, .drop-zone.drag-over { border-color: rgba(180,83,9,0.6); background: rgba(120,53,15,0.1); }
+/* Inline edit */
+.inline-edit{background:rgba(28,25,23,.8);border:1px solid rgba(180,83,9,.5);border-radius:2px;padding:3px 8px;color:#d8b4fe;font-size:10px;font-family:'DM Mono',monospace;outline:none;min-width:120px;}
 
-  .section-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #78716c; margin-bottom: 8px; font-family: 'DM Mono', monospace; }
-  .divider { border-color: rgba(68,64,60,0.5); margin: 0; }
+/* Progress steps */
+.prog-step{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:11px;color:#57534e;transition:color .3s;}
+.prog-step.active{color:#fcd34d;}
+.prog-step.done{color:#10b981;}
+.prog-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;}
 
-  pre { white-space: pre-wrap; word-break: break-word; }
-
-  /* Header sticky */
-  .sticky-header { position: sticky; top: 0; z-index: 40; backdrop-filter: blur(8px); background: rgba(12,11,9,0.92); border-bottom: 1px solid #292524; }
+.lc2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.lc3{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
 </style>
 </head>
 <body>
 
 <!-- Toast -->
-<div id="toast" style="display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:100; padding:10px 18px; border-radius:4px; font-size:13px; box-shadow:0 4px 24px rgba(0,0,0,0.5);" class="toast-enter font-mono"></div>
+<div id="toast" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:200;padding:9px 16px;border-radius:3px;font-size:12px;box-shadow:0 4px 20px rgba(0,0,0,.5);" class="fm toast-in"></div>
 
 <!-- Detail Modal -->
-<div id="modal" class="modal-overlay" style="display:none;" onclick="closeModal(event)">
-  <div class="modal-panel" onclick="event.stopPropagation()">
-    <div style="position:sticky;top:0;background:rgba(12,11,9,0.95);backdrop-filter:blur(8px);border-bottom:1px solid #292524;padding:20px 24px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
-      <div>
-        <h2 id="modal-title" class="font-display" style="color:#fde68a;font-size:18px;line-height:1.3;"></h2>
-        <p id="modal-meta" class="font-mono" style="color:#78716c;font-size:11px;margin-top:4px;"></p>
-        <p id="modal-fsid" class="font-mono" style="color:#059669;font-size:10px;margin-top:2px;"></p>
-      </div>
-      <button onclick="document.getElementById('modal').style.display='none'" style="color:#78716c;background:none;border:none;font-size:22px;cursor:pointer;line-height:1;margin-top:2px;">×</button>
-    </div>
-    <div id="modal-body" style="padding:24px;"></div>
-  </div>
+<div id="modal" class="modal-bg" style="display:none;" onclick="if(event.target===this)closeModal()">
+  <div class="modal-panel" id="modal-panel"></div>
 </div>
 
 <!-- Header -->
-<div class="sticky-header">
-  <div style="max-width:1152px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;">
+<div style="position:sticky;top:0;z-index:40;backdrop-filter:blur(10px);background:rgba(12,11,9,.93);border-bottom:1px solid #1c1917;">
+  <div style="max-width:1200px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;">
     <div style="display:flex;align-items:center;gap:12px;">
-      <div style="width:32px;height:32px;border:1px solid rgba(180,83,9,0.5);display:flex;align-items:center;justify-content:center;border-radius:3px;">
-        <span style="color:#f59e0b;font-size:16px;">⚖</span>
+      <div style="width:30px;height:30px;border:1px solid rgba(180,83,9,.5);display:flex;align-items:center;justify-content:center;border-radius:3px;flex-shrink:0;">
+        <span style="color:#f59e0b;font-size:15px;">⚖</span>
       </div>
       <div>
-        <h1 class="font-display" style="color:#fde68a;font-size:18px;line-height:1;">APM Legal Database</h1>
-        <p class="font-mono" style="color:#44403c;font-size:10px;letter-spacing:0.12em;margin-top:2px;">NSW CRIMINAL LAW · FIRESTORE</p>
+        <h1 class="fd" style="color:#fde68a;font-size:17px;line-height:1;">APM Legal Database</h1>
+        <p class="fm" style="color:#44403c;font-size:9px;letter-spacing:.14em;margin-top:1px;">NSW CRIMINAL LAW · GEMINI AI</p>
       </div>
     </div>
-    <div style="display:flex;align-items:center;gap:10px;">
-      <div id="db-status-dot" style="width:8px;height:8px;border-radius:50%;background:#374151;"></div>
-      <span id="db-status-text" class="font-mono" style="color:#57534e;font-size:11px;">Connecting…</span>
+    <!-- Search bar in header -->
+    <div style="flex:1;max-width:480px;position:relative;">
+      <input type="text" id="global-search" class="inp" placeholder="Search cases, topics, principles…" oninput="handleGlobalSearch(this.value)" style="padding-left:32px;font-size:12px;"/>
+      <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#57534e;font-size:13px;">⌕</span>
+      <button onclick="clearGlobalSearch()" id="clear-search" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#78716c;cursor:pointer;font-size:15px;">×</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+      <div id="db-dot" style="width:7px;height:7px;border-radius:50%;background:#374151;"></div>
+      <span id="db-status" class="fm" style="color:#57534e;font-size:10px;">Connecting…</span>
+    </div>
+  </div>
+  <!-- Active filter bar -->
+  <div id="filter-bar" style="display:none;padding:6px 24px 8px;border-top:1px solid rgba(28,25,23,.8);max-width:1200px;margin:0 auto;">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <span class="fm" style="color:#57534e;font-size:10px;">Filtering by:</span>
+      <div id="filter-chips"></div>
+      <button class="btn-ghost" onclick="clearAllFilters()">Clear all</button>
     </div>
   </div>
 </div>
 
-<!-- Main -->
-<div style="max-width:1152px;margin:0 auto;padding:32px 24px;">
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;">
+<!-- Main layout -->
+<div style="max-width:1200px;margin:0 auto;padding:24px;display:grid;grid-template-columns:340px 1fr;gap:24px;" id="main-grid">
 
-    <!-- LEFT PANEL -->
-    <div>
-      <!-- Tabs -->
-      <div style="display:flex;border-bottom:1px solid #292524;margin-bottom:20px;">
-        <button class="tab-btn active" id="tab-ingest" onclick="switchTab('ingest')">↓ Ingest</button>
-        <button class="tab-btn" id="tab-search" onclick="switchTab('search')">⌕ Search</button>
+  <!-- LEFT: Ingest + AI Ask -->
+  <div style="display:flex;flex-direction:column;gap:16px;">
+
+    <!-- Tabs -->
+    <div style="display:flex;border-bottom:1px solid #1c1917;">
+      <button class="tab active" id="tab-ingest" onclick="switchTab('ingest')">↓ Ingest</button>
+      <button class="tab" id="tab-ask" onclick="switchTab('ask')">✦ Ask AI</button>
+      <button class="tab" id="tab-topics" onclick="switchTab('topics')">◈ Topics</button>
+    </div>
+
+    <!-- INGEST PANEL -->
+    <div id="panel-ingest">
+      <p class="fm" style="color:#57534e;font-size:11px;line-height:1.7;margin-bottom:12px;">Upload a PDF or Word doc, or paste text. Gemini AI will extract and save to Firestore.</p>
+
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()"
+        ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+        <input type="file" id="file-input" accept=".pdf,.doc,.docx" style="display:none;" onchange="handleFileSelect(event)"/>
+        <div style="color:#44403c;font-size:24px;margin-bottom:6px;">📄</div>
+        <p class="fm" style="color:#57534e;font-size:11px;">Drop PDF or Word doc here</p>
+        <p class="fm" style="color:#292524;font-size:10px;margin-top:3px;">or click to browse</p>
+        <div id="file-name" style="display:none;margin-top:10px;padding:5px 10px;background:rgba(120,53,15,.2);border:1px solid rgba(180,83,9,.3);border-radius:2px;color:#fcd34d;font-size:10px;" class="fm"></div>
       </div>
 
-      <!-- INGEST PANEL -->
-      <div id="panel-ingest">
-        <p class="font-mono" style="color:#78716c;font-size:11px;line-height:1.7;margin-bottom:16px;">
-          Upload a PDF or Word document, or paste text directly. The AI will extract structured data and save it to Firestore.
-        </p>
-
-        <!-- Upload zone -->
-        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()"
-          ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
-          <input type="file" id="file-input" accept=".pdf,.doc,.docx" style="display:none;" onchange="handleFileSelect(event)" />
-          <div style="color:#57534e;font-size:28px;margin-bottom:8px;">📄</div>
-          <p class="font-mono" style="color:#78716c;font-size:12px;">Drop a PDF or Word doc here</p>
-          <p class="font-mono" style="color:#44403c;font-size:11px;margin-top:4px;">or click to browse</p>
-          <div id="file-name" style="display:none;margin-top:10px;padding:6px 12px;background:rgba(120,53,15,0.2);border:1px solid rgba(180,83,9,0.3);border-radius:3px;color:#fcd34d;font-size:11px;" class="font-mono"></div>
-        </div>
-
-        <div style="display:flex;align-items:center;gap:10px;margin:12px 0;">
-          <hr class="divider" style="flex:1;" />
-          <span class="font-mono" style="color:#44403c;font-size:10px;">OR PASTE TEXT</span>
-          <hr class="divider" style="flex:1;" />
-        </div>
-
-        <textarea id="ingest-text" class="input-area" style="min-height:180px;" placeholder="Paste case text here — e.g. R v Smith [2003] NSWCCA 123..."></textarea>
-
-        <div style="margin-top:10px;">
-          <button class="btn-primary" id="ingest-btn" onclick="handleIngest()" disabled>
-            Analyse &amp; Save to Firestore →
-          </button>
-        </div>
-
-        <div id="ingest-progress" style="display:none;margin-top:10px;padding:10px 14px;background:rgba(28,25,23,0.8);border:1px solid #292524;border-radius:4px;">
-          <p class="font-mono" style="color:#78716c;font-size:11px;" id="progress-text">⟳ Processing…</p>
-        </div>
+      <div style="display:flex;align-items:center;gap:8px;margin:10px 0;">
+        <hr class="d" style="flex:1;"/><span class="fm" style="color:#292524;font-size:9px;">OR PASTE TEXT</span><hr class="d" style="flex:1;"/>
       </div>
 
-      <!-- SEARCH PANEL -->
-      <div id="panel-search" style="display:none;">
-        <p class="font-mono" style="color:#78716c;font-size:11px;line-height:1.7;margin-bottom:16px;">
-          Describe what you're looking for. The AI will generate structured Firestore query parameters and a semantic vector query.
-        </p>
-        <textarea id="search-text" class="input-area" style="min-height:140px;" placeholder="e.g. NSW sentencing cases on objective seriousness for armed robbery where standard non-parole period applied..."></textarea>
-        <div style="margin-top:10px;">
-          <button class="btn-secondary" id="search-btn" onclick="handleSearch()">Generate Query →</button>
-        </div>
-        <div id="search-result" style="display:none;margin-top:16px;"></div>
+      <textarea id="ingest-text" class="inp" style="min-height:120px;font-family:'Libre Baskerville',Georgia,serif;font-size:13px;line-height:1.6;" placeholder="Paste case text here…"></textarea>
+
+      <!-- Topic assignment -->
+      <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
+        <span class="fm" style="color:#57534e;font-size:10px;white-space:nowrap;">Assign topic:</span>
+        <input type="text" id="topic-input" class="inp" style="font-size:11px;padding:6px 10px;" placeholder="e.g. Sentencing — Armed Robbery" list="topic-list"/>
+        <datalist id="topic-list"></datalist>
       </div>
 
-      <!-- Error -->
-      <div id="error-box" style="display:none;margin-top:12px;padding:10px 14px;border:1px solid rgba(153,27,27,0.5);background:rgba(69,10,10,0.3);border-radius:4px;">
-        <p class="font-mono" style="color:#fca5a5;font-size:11px;" id="error-text"></p>
+      <div style="margin-top:8px;">
+        <button class="btn-primary" id="ingest-btn" onclick="handleIngest()" disabled>Analyse &amp; Save →</button>
       </div>
 
-      <!-- Schema reference -->
-      <div style="margin-top:24px;border:1px solid rgba(41,37,36,0.8);background:rgba(28,25,23,0.3);border-radius:4px;padding:16px;">
-        <p class="section-label">Firestore Collection</p>
-        <p class="font-mono" style="color:#92400e;font-size:11px;margin-bottom:12px;">apm-legal-database › cases › {autoId}</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;">
-          <!-- fields filled by JS -->
-        </div>
-        <div id="schema-fields" style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;"></div>
+      <!-- Progress -->
+      <div id="ingest-progress" style="display:none;margin-top:10px;padding:12px;background:rgba(28,25,23,.8);border:1px solid #1c1917;border-radius:3px;">
+        <div id="prog-steps"></div>
       </div>
     </div>
 
-    <!-- RIGHT PANEL -->
-    <div>
-      <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #292524;padding-bottom:10px;margin-bottom:16px;">
-        <p class="section-label" style="margin-bottom:0;">Knowledge Base</p>
-        <button id="export-btn" onclick="exportJSON()" style="display:none;color:#57534e;background:none;border:none;font-size:11px;cursor:pointer;font-family:'DM Mono',monospace;transition:color 0.2s;" onmouseover="this.style.color='#f59e0b'" onmouseout="this.style.color='#57534e'">↓ Export JSON</button>
+    <!-- ASK AI PANEL -->
+    <div id="panel-ask" style="display:none;">
+      <p class="fm" style="color:#57534e;font-size:11px;line-height:1.7;margin-bottom:12px;">Ask any legal question. Gemini will search across all ingested cases and return relevant answers with links.</p>
+      <textarea id="ask-text" class="inp" style="min-height:100px;font-family:'Libre Baskerville',Georgia,serif;font-size:13px;line-height:1.6;" placeholder="e.g. What cases deal with parity in sentencing for drug supply? What is the standard non-parole period for armed robbery?"></textarea>
+      <div style="margin-top:8px;">
+        <button class="btn-primary" id="ask-btn" onclick="handleAsk()">Ask Gemini →</button>
       </div>
-      <div id="cases-list">
-        <div style="border:1px dashed rgba(41,37,36,0.6);border-radius:4px;padding:40px;text-align:center;" id="empty-state">
-          <p class="font-display" style="color:#292524;font-size:15px;font-style:italic;">No cases in database yet.</p>
-          <p class="font-mono" style="color:#292524;font-size:11px;margin-top:8px;">Upload a document and click Analyse & Save →</p>
-        </div>
+      <div id="ask-result" style="display:none;margin-top:14px;"></div>
+    </div>
+
+    <!-- TOPICS PANEL -->
+    <div id="panel-topics" style="display:none;">
+      <p class="fm" style="color:#57534e;font-size:11px;line-height:1.7;margin-bottom:12px;">All topics in your knowledge base. Click to filter cases.</p>
+      <div id="topics-list"></div>
+    </div>
+
+    <!-- Error -->
+    <div id="error-box" style="display:none;padding:10px 12px;border:1px solid rgba(153,27,27,.5);background:rgba(69,10,10,.3);border-radius:3px;">
+      <p class="fm" style="color:#fca5a5;font-size:11px;" id="error-text"></p>
+    </div>
+
+    <!-- Stats -->
+    <div style="border:1px solid rgba(28,25,23,.8);background:rgba(28,25,23,.3);border-radius:3px;padding:12px;margin-top:4px;">
+      <p class="sl">Database Stats</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;" id="stats-grid">
+        <div><p class="fm" style="color:#44403c;font-size:9px;">CASES</p><p class="fd" style="color:#fde68a;font-size:20px;" id="stat-cases">0</p></div>
+        <div><p class="fm" style="color:#44403c;font-size:9px;">TOPICS</p><p class="fd" style="color:#fde68a;font-size:20px;" id="stat-topics">0</p></div>
+        <div><p class="fm" style="color:#44403c;font-size:9px;">OFFENCE TYPES</p><p class="fd" style="color:#fde68a;font-size:20px;" id="stat-offences">0</p></div>
+        <div><p class="fm" style="color:#44403c;font-size:9px;">JURISDICTIONS</p><p class="fd" style="color:#fde68a;font-size:20px;" id="stat-jurisdictions">0</p></div>
       </div>
     </div>
 
   </div>
+
+  <!-- RIGHT: Cases list -->
+  <div>
+    <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1c1917;padding-bottom:10px;margin-bottom:14px;gap:12px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <p class="sl" style="margin-bottom:0;" id="cases-heading">Knowledge Base</p>
+        <span id="case-count-badge" class="fm" style="color:#44403c;font-size:10px;"></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <select id="sort-select" class="inp" style="width:auto;padding:4px 8px;font-size:10px;" onchange="renderCases()">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="title">Title A–Z</option>
+          <option value="court">Court</option>
+        </select>
+        <button id="export-btn" onclick="exportJSON()" class="btn-ghost" style="display:none;">↓ Export</button>
+      </div>
+    </div>
+
+    <div id="cases-container" style="max-height:calc(100vh - 160px);overflow-y:auto;scrollbar-width:thin;padding-right:4px;">
+      <div id="cases-list"></div>
+    </div>
+  </div>
+
 </div>
 
 <script>
-// ── Config ─────────────────────────────────────────────────────
+// ── Config ──────────────────────────────────────────────────────
 const PROJECT_ID = "apm-legal-database";
 const COLLECTION = "cases";
-const API_KEY    = "AIzaSyAtRaBvfTbme3tm4bZfWbcV4FOBosdCtnc";
-const FS_BASE    = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+const API_KEY_FS  = "AIzaSyAtRaBvfTbme3tm4bZfWbcV4FOBosdCtnc";
+const GEMINI_KEY  = "AIzaSyBba6mviFCcJXoUY67yo3CY3xrj_bCikDY";
+const FS_BASE     = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+const GEMINI_URL  = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
 
-// PDF.js worker
-if (typeof pdfjsLib !== "undefined") {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+if(typeof pdfjsLib!=="undefined") pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+// ── State ───────────────────────────────────────────────────────
+let cases=[], filteredCases=[], activeFilters={}, currentFileText="", activeTab="ingest";
+let globalSearchTerm="";
+
+// ── Firestore REST ──────────────────────────────────────────────
+function toFsVal(v){
+  if(v===null||v===undefined) return{nullValue:null};
+  if(typeof v==="boolean") return{booleanValue:v};
+  if(typeof v==="number") return{doubleValue:v};
+  if(typeof v==="string") return{stringValue:v};
+  if(Array.isArray(v)) return{arrayValue:{values:v.map(toFsVal)}};
+  if(typeof v==="object"){const f={};for(const[k,val]of Object.entries(v))f[k]=toFsVal(val);return{mapValue:{fields:f}};}
+  return{stringValue:String(v)};
 }
-
-// ── State ──────────────────────────────────────────────────────
-let cases = [];
-let currentFileText = "";
-let activeTab = "ingest";
-
-// ── Schema fields ──────────────────────────────────────────────
-const SCHEMA_FIELDS = ["title","citation","court","jurisdiction","decisionDate","parties","legalIssues","legalPrinciples","statutesCited","casesCited","outcome","conciseSummary","detailedSummary","quotes","offenceTypes","topics","areaOfLaw","courtLevel","relevanceNotes","embeddingInput","createdAt"];
-
-document.getElementById("schema-fields").innerHTML = SCHEMA_FIELDS.map(f =>
-  `<p class="font-mono" style="color:#44403c;font-size:11px;">· ${f}</p>`
-).join("");
-
-// ── Firestore REST ─────────────────────────────────────────────
-function toFsValue(val) {
-  if (val === null || val === undefined) return { nullValue: null };
-  if (typeof val === "boolean") return { booleanValue: val };
-  if (typeof val === "number")  return { doubleValue: val };
-  if (typeof val === "string")  return { stringValue: val };
-  if (Array.isArray(val)) return { arrayValue: { values: val.map(toFsValue) } };
-  if (typeof val === "object") {
-    const fields = {};
-    for (const [k,v] of Object.entries(val)) fields[k] = toFsValue(v);
-    return { mapValue: { fields } };
-  }
-  return { stringValue: String(val) };
-}
-
-function fromFsValue(val) {
-  if (!val) return null;
-  if ("stringValue"  in val) return val.stringValue;
-  if ("integerValue" in val) return Number(val.integerValue);
-  if ("doubleValue"  in val) return val.doubleValue;
-  if ("booleanValue" in val) return val.booleanValue;
-  if ("nullValue"    in val) return null;
-  if ("timestampValue" in val) return val.timestampValue;
-  if ("arrayValue"   in val) return (val.arrayValue.values || []).map(fromFsValue);
-  if ("mapValue"     in val) {
-    const obj = {};
-    for (const [k,v] of Object.entries(val.mapValue.fields || {})) obj[k] = fromFsValue(v);
-    return obj;
-  }
+function fromFsVal(v){
+  if(!v) return null;
+  if("stringValue" in v) return v.stringValue;
+  if("integerValue" in v) return Number(v.integerValue);
+  if("doubleValue" in v) return v.doubleValue;
+  if("booleanValue" in v) return v.booleanValue;
+  if("nullValue" in v) return null;
+  if("timestampValue" in v) return v.timestampValue;
+  if("arrayValue" in v) return(v.arrayValue.values||[]).map(fromFsVal);
+  if("mapValue" in v){const o={};for(const[k,val]of Object.entries(v.mapValue.fields||{}))o[k]=fromFsVal(val);return o;}
   return null;
 }
-
-function fsDocToObj(doc) {
-  const obj = { _firestoreId: doc.name.split("/").pop() };
-  for (const [k,v] of Object.entries(doc.fields || {})) obj[k] = fromFsValue(v);
-  return obj;
+function fsToObj(doc){
+  const o={_id:doc.name.split("/").pop()};
+  for(const[k,v]of Object.entries(doc.fields||{}))o[k]=fromFsVal(v);
+  return o;
+}
+async function fsSave(data){
+  const fields={};
+  for(const[k,v]of Object.entries(data))fields[k]=toFsVal(v);
+  fields.createdAt={timestampValue:new Date().toISOString()};
+  const r=await fetch(`${FS_BASE}/${COLLECTION}?key=${API_KEY_FS}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fields})});
+  if(!r.ok) throw new Error(await r.text());
+  const d=await r.json();
+  return d.name.split("/").pop();
+}
+async function fsUpdate(id,data){
+  const fields={};
+  for(const[k,v]of Object.entries(data))fields[k]=toFsVal(v);
+  const fieldPaths=Object.keys(data).map(k=>`updateMask.fieldPaths=${k}`).join("&");
+  const r=await fetch(`${FS_BASE}/${COLLECTION}/${id}?${fieldPaths}&key=${API_KEY_FS}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({fields})});
+  if(!r.ok) throw new Error(await r.text());
+}
+async function fsLoad(){
+  const r=await fetch(`${FS_BASE}/${COLLECTION}?key=${API_KEY_FS}&pageSize=200`);
+  if(!r.ok) return[];
+  const d=await r.json();
+  return(d.documents||[]).map(fsToObj);
 }
 
-async function saveToFirestore(data) {
-  const fields = {};
-  for (const [k,v] of Object.entries(data)) fields[k] = toFsValue(v);
-  fields.createdAt = { timestampValue: new Date().toISOString() };
-  const res = await fetch(`${FS_BASE}/${COLLECTION}?key=${API_KEY}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ fields }),
-  });
-  if (!res.ok) throw new Error(await res.text());
-  const doc = await res.json();
-  return doc.name.split("/").pop();
-}
-
-async function loadFromFirestore() {
-  const res = await fetch(`${FS_BASE}/${COLLECTION}?key=${API_KEY}&pageSize=200`);
-  if (!res.ok) return [];
-  const data = await res.json();
-  return (data.documents || []).map(fsDocToObj);
-}
-
-// ── Init load ──────────────────────────────────────────────────
-(async () => {
-  try {
-    cases = await loadFromFirestore();
-    setDbStatus(true, cases.length);
+// ── Init ────────────────────────────────────────────────────────
+(async()=>{
+  try{
+    cases=await fsLoad();
+    cases.sort((a,b)=>((b.createdAt||"")>(a.createdAt||"")?1:-1));
+    filteredCases=[...cases];
+    setDbStatus(true);
     renderCases();
-  } catch(e) {
-    setDbStatus(false, 0);
-  }
+    updateStats();
+    updateTopicsList();
+    updateTopicDatalist();
+  }catch(e){setDbStatus(false);}
 })();
 
-function setDbStatus(ok, count) {
-  const dot  = document.getElementById("db-status-dot");
-  const text = document.getElementById("db-status-text");
-  dot.style.background  = ok ? "#10b981" : "#ef4444";
-  text.textContent = ok ? `${count} case${count !== 1 ? "s" : ""} in database` : "Connection error";
+function setDbStatus(ok){
+  document.getElementById("db-dot").style.background=ok?"#10b981":"#ef4444";
+  document.getElementById("db-status").textContent=ok?`${cases.length} case${cases.length!==1?"s":""}`:"Error";
 }
 
-// ── File parsing ───────────────────────────────────────────────
-async function extractTextFromPDF(file) {
-  const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-  let text = "";
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    text += content.items.map(item => item.str).join(" ") + "\n\n";
+// ── File handling ───────────────────────────────────────────────
+async function extractPDF(file){
+  const ab=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:ab}).promise;
+  let text="";
+  for(let i=1;i<=pdf.numPages;i++){
+    const page=await pdf.getPage(i);
+    const c=await page.getTextContent();
+    text+=`[Page ${i}]\n`+c.items.map(x=>x.str).join(" ")+"\n\n";
   }
   return text.trim();
 }
-
-async function extractTextFromDocx(file) {
-  const arrayBuffer = await file.arrayBuffer();
-  const result = await mammoth.extractRawText({ arrayBuffer });
-  return result.value.trim();
+async function extractDOCX(file){
+  const ab=await file.arrayBuffer();
+  const r=await mammoth.extractRawText({arrayBuffer:ab});
+  return r.value.trim();
 }
-
-async function handleFileSelect(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  await processFile(file);
-}
-
-async function processFile(file) {
-  const nameEl = document.getElementById("file-name");
-  nameEl.textContent = "⟳ Reading " + file.name + "…";
-  nameEl.style.display = "block";
-  currentFileText = "";
-
-  try {
-    if (file.name.endsWith(".pdf")) {
-      currentFileText = await extractTextFromPDF(file);
-    } else if (file.name.endsWith(".docx") || file.name.endsWith(".doc")) {
-      currentFileText = await extractTextFromDocx(file);
-    } else {
-      showError("Unsupported file type. Please upload a PDF or Word document (.docx).");
-      nameEl.style.display = "none";
-      return;
-    }
-    nameEl.textContent = "✓ " + file.name + " (" + Math.round(currentFileText.length / 1000) + "k chars extracted)";
-    document.getElementById("ingest-btn").disabled = false;
+async function processFile(file){
+  const nameEl=document.getElementById("file-name");
+  nameEl.textContent="⟳ Reading "+file.name+"…";
+  nameEl.style.display="block";
+  currentFileText="";
+  try{
+    if(file.name.endsWith(".pdf")) currentFileText=await extractPDF(file);
+    else if(file.name.endsWith(".docx")||file.name.endsWith(".doc")) currentFileText=await extractDOCX(file);
+    else{showError("Unsupported file type.");nameEl.style.display="none";return;}
+    nameEl.textContent="✓ "+file.name+" ("+Math.round(currentFileText.length/1000)+"k chars)";
+    document.getElementById("ingest-btn").disabled=false;
     hideError();
-  } catch(e) {
-    nameEl.style.display = "none";
-    showError("Could not read file: " + e.message);
-  }
+  }catch(e){nameEl.style.display="none";showError("Could not read file: "+e.message);}
+}
+function handleFileSelect(e){const f=e.target.files[0];if(f)processFile(f);}
+function handleDragOver(e){e.preventDefault();document.getElementById("drop-zone").classList.add("drag-over");}
+function handleDragLeave(){document.getElementById("drop-zone").classList.remove("drag-over");}
+function handleDrop(e){e.preventDefault();document.getElementById("drop-zone").classList.remove("drag-over");const f=e.dataTransfer.files[0];if(f)processFile(f);}
+document.getElementById("ingest-text").addEventListener("input",function(){document.getElementById("ingest-btn").disabled=!this.value.trim()&&!currentFileText;});
+
+// ── Gemini AI ───────────────────────────────────────────────────
+async function callGemini(prompt){
+  const r=await fetch(GEMINI_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.1,maxOutputTokens:8192}})});
+  if(!r.ok){const e=await r.text();throw new Error(e);}
+  const d=await r.json();
+  return d.candidates?.[0]?.content?.parts?.[0]?.text||"";
 }
 
-function handleDragOver(e) {
-  e.preventDefault();
-  document.getElementById("drop-zone").classList.add("drag-over");
-}
-function handleDragLeave(e) {
-  document.getElementById("drop-zone").classList.remove("drag-over");
-}
-function handleDrop(e) {
-  e.preventDefault();
-  document.getElementById("drop-zone").classList.remove("drag-over");
-  const file = e.dataTransfer.files[0];
-  if (file) processFile(file);
-}
+const INGEST_PROMPT=`You are an expert Australian criminal law analyst. Analyse the following legal document and extract structured data. Return ONLY valid JSON with no markdown, no explanation, no code blocks.
 
-// Also enable ingest button when text is typed
-document.getElementById("ingest-text").addEventListener("input", function() {
-  document.getElementById("ingest-btn").disabled = !this.value.trim() && !currentFileText;
-});
-
-// ── Claude API ─────────────────────────────────────────────────
-const SYSTEM_PROMPT = `You are an AI assistant that ingests legal documents and populates a criminal law knowledge base stored in Google Cloud Firestore. Assume Australian criminal law with emphasis on NSW unless the document clearly indicates otherwise.
-
-When given a legal document to INGEST, output a single JSON object (no markdown, no explanation, just valid JSON) with these exact keys:
-{"title":"Short human-readable title","citation":"Neutral or reported citation if present, else 'not stated'","court":"Court name and level e.g. NSWCCA, HCA, NSWDC","jurisdiction":"e.g. NSW, Commonwealth","decisionDate":"ISO date string e.g. 1999-06-30, or 'not stated'","parties":["array of party names"],"proceduralPosture":"One-sentence description of what the court was deciding","legalIssues":["array of key legal issues in plain language"],"legalPrinciples":["array of short statements of principles derived from the case"],"statutesCited":[{"act":"...","section":"...","jurisdiction":"..."}],"casesCited":[{"caseName":"...","citation":"...","court":"..."}],"outcome":"Short description of result","conciseSummary":"150-300 word neutral summary","detailedSummary":"500-1000 word structured summary covering facts, issues, reasoning, outcome, key principles","quotes":[{"text":"short quote max 40 words","theme":"what it illustrates"}],"offenceTypes":["standardised labels e.g. armed robbery, sexual assault, drug supply"],"topics":["doctrinal topics e.g. objective seriousness, moral culpability, totality, standard non-parole period, parity, special circumstances, delay"],"areaOfLaw":["e.g. sentencing, evidence, procedure"],"courtLevel":"trial or intermediate appellate or court of final appeal","relevanceNotes":["2-4 bullet sentences on when/why this case is practically useful"],"embeddingInput":"A single concatenated string of title, citation, court, concise summary, key issues, key principles, relevant statutes, offence types, topics for vector search"}
-
-When given a SEARCH query, output a single JSON object (no markdown, no explanation, just valid JSON):
-{"keywords":["main search terms"],"filters":{"jurisdiction":[],"court":[],"offenceTypes":[],"topics":[],"areaOfLaw":[]},"vectorQuery":"natural-language string optimised for embedding search","notesForDeveloper":["Example Firestore filter notes"]}`;
-
-async function callClaude(userMessage) {
-  const res = await fetch("https://apm-proxy.abrammeredith.workers.dev", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4000,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: userMessage }],
-    }),
-  });
-  const data = await res.json();
-  const text = (data.content || []).map(i => i.text || "").join("");
-  return JSON.parse(text.replace(/```json|```/g, "").trim());
+Required JSON structure:
+{
+  "title": "Short official case name or title",
+  "citation": "Full citation or 'not stated'",
+  "court": "Court name e.g. NSWCCA, HCA, NSWDC or 'not stated'",
+  "jurisdiction": "NSW / Commonwealth / Victoria etc",
+  "decisionDate": "ISO date e.g. 2003-06-15 or 'not stated'",
+  "parties": ["Appellant name","Respondent name"],
+  "proceduralPosture": "One sentence: what was the court deciding",
+  "legalIssues": ["Issue 1","Issue 2"],
+  "legalPrinciples": ["Principle 1","Principle 2","Principle 3"],
+  "statutesCited": [{"act":"Crimes Act 1900","section":"97","jurisdiction":"NSW"}],
+  "casesCited": [{"caseName":"R v XYZ","citation":"[2001] NSWCCA 123","court":"NSWCCA"}],
+  "outcome": "Short outcome e.g. Appeal dismissed. Sentence reduced to X.",
+  "conciseSummary": "150-250 word neutral professional summary",
+  "detailedSummary": "600-900 word structured summary: Facts | Issues | Reasoning | Outcome | Key Principles",
+  "quotes": [{"text":"Exact quote under 40 words","theme":"What this illustrates","pageRef":"Page X or unknown"}],
+  "offenceTypes": ["armed robbery","drug supply"],
+  "topics": ["objective seriousness","totality","standard non-parole period"],
+  "primaryTopic": "The single most relevant doctrinal topic e.g. Sentencing — Armed Robbery",
+  "areaOfLaw": ["sentencing","evidence"],
+  "courtLevel": "trial / intermediate appellate / court of final appeal",
+  "relevanceNotes": ["When/why this case is useful — note 1","note 2","note 3"],
+  "fullText": "The complete extracted text of the document for full-text search"
 }
 
-// ── Ingest ─────────────────────────────────────────────────────
-async function handleIngest() {
-  const pastedText = document.getElementById("ingest-text").value.trim();
-  const textToProcess = currentFileText || pastedText;
-  if (!textToProcess) return;
+Tagging: use lowercase with spaces. Be consistent. Include both doctrinal and practice tags.
+The fullText field should contain the complete document text passed in.
 
-  const btn = document.getElementById("ingest-btn");
-  const progress = document.getElementById("ingest-progress");
-  const progressText = document.getElementById("progress-text");
+DOCUMENT:
+`;
 
-  btn.disabled = true;
-  progress.style.display = "block";
-  hideError();
+// ── Ingest ──────────────────────────────────────────────────────
+async function handleIngest(){
+  const pasted=document.getElementById("ingest-text").value.trim();
+  const raw=currentFileText||pasted;
+  if(!raw) return;
+  const userTopic=document.getElementById("topic-input").value.trim();
 
-  const steps = [
-    "⟳ Sending to Claude for analysis…",
-    "⟳ Extracting legal issues and principles…",
-    "⟳ Building Firestore document…",
-    "⟳ Saving to database…"
+  const btn=document.getElementById("ingest-btn");
+  const prog=document.getElementById("ingest-progress");
+  btn.disabled=true; prog.style.display="block"; hideError();
+
+  const steps=[
+    {text:"Sending to Gemini for analysis…",done:false},
+    {text:"Extracting legal principles…",done:false},
+    {text:"Building knowledge base entry…",done:false},
+    {text:"Saving to Firestore…",done:false}
   ];
-  let stepIdx = 0;
-  progressText.textContent = steps[0];
-  const stepTimer = setInterval(() => {
-    stepIdx = Math.min(stepIdx + 1, steps.length - 1);
-    progressText.textContent = steps[stepIdx];
-  }, 4000);
+  renderProgress(steps,0);
+  const timer1=setTimeout(()=>renderProgress(steps,1),3000);
+  const timer2=setTimeout(()=>renderProgress(steps,2),7000);
 
-  try {
-    const result = await callClaude(`INGEST this legal document:\n\n${textToProcess}`);
-    clearInterval(stepTimer);
-    progressText.textContent = "⟳ Saving to Firestore…";
-    const firestoreId = await saveToFirestore(result);
-    const withId = { ...result, _firestoreId: firestoreId };
+  try{
+    const truncated=raw.slice(0,18000);
+    const prompt=INGEST_PROMPT+truncated+"\n\nIMPORTANT: fullText field must contain the complete document text above.";
+    const raw_resp=await callGemini(prompt);
+    clearTimeout(timer1);clearTimeout(timer2);
+    renderProgress(steps,3);
+
+    let result;
+    try{
+      const clean=raw_resp.replace(/```json|```/g,"").trim();
+      result=JSON.parse(clean);
+    }catch(e){throw new Error("Could not parse AI response. Try again.");}
+
+    // Override primaryTopic if user specified one
+    if(userTopic) result.primaryTopic=userTopic;
+    // Store full text
+    result.fullText=raw.slice(0,50000);
+
+    const id=await fsSave(result);
+    const withId={...result,_id:id};
     cases.unshift(withId);
-    setDbStatus(true, cases.length);
-    renderCases();
+    applyFiltersAndSearch();
+    updateStats();
+    updateTopicsList();
+    updateTopicDatalist();
+    setDbStatus(true);
+
     // Reset
-    document.getElementById("ingest-text").value = "";
-    currentFileText = "";
-    document.getElementById("file-name").style.display = "none";
-    document.getElementById("file-input").value = "";
-    btn.disabled = true;
-    progress.style.display = "none";
-    showToast(`"${result.title}" saved to Firestore ✓`, "success");
-  } catch(e) {
-    clearInterval(stepTimer);
-    progress.style.display = "none";
-    btn.disabled = false;
-    showError("Failed to process or save. " + e.message);
+    document.getElementById("ingest-text").value="";
+    document.getElementById("topic-input").value="";
+    currentFileText="";
+    document.getElementById("file-name").style.display="none";
+    document.getElementById("file-input").value="";
+    btn.disabled=true;
+    prog.style.display="none";
+    showToast(`"${result.title}" saved ✓`,"success");
+  }catch(e){
+    clearTimeout(timer1);clearTimeout(timer2);
+    prog.style.display="none";
+    btn.disabled=false;
+    showError("Failed: "+e.message);
   }
 }
 
-// ── Search ─────────────────────────────────────────────────────
-async function handleSearch() {
-  const q = document.getElementById("search-text").value.trim();
-  if (!q) return;
-  const btn = document.getElementById("search-btn");
-  btn.disabled = true;
-  btn.textContent = "Processing…";
-  hideError();
-  document.getElementById("search-result").style.display = "none";
+function renderProgress(steps,activeIdx){
+  const el=document.getElementById("prog-steps");
+  el.innerHTML=steps.map((s,i)=>`
+    <div class="prog-step ${i<activeIdx?"done":i===activeIdx?"active":""}">
+      <div class="prog-dot"></div>
+      <span>${i<activeIdx?"✓ ":""}${s.text}</span>
+      ${i===activeIdx?'<span class="spin" style="margin-left:4px;font-size:11px;">⟳</span>':""}
+    </div>`).join("");
+}
 
-  try {
-    const result = await callClaude(`SEARCH query: ${q}`);
-    renderSearchResult(result);
-  } catch(e) {
-    showError("Failed to process search query. " + e.message);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "Generate Query →";
+// ── Ask AI ──────────────────────────────────────────────────────
+async function handleAsk(){
+  const q=document.getElementById("ask-text").value.trim();
+  if(!q||cases.length===0) return;
+  const btn=document.getElementById("ask-btn");
+  const result=document.getElementById("ask-result");
+  btn.disabled=true;btn.textContent="Thinking…";
+  result.style.display="none";hideError();
+
+  try{
+    // Build context from all cases
+    const context=cases.map((c,i)=>`[${i}] ${c.title} (${c.citation||"no citation"}) — ${c.court||""} — ${c.decisionDate||""}
+Summary: ${c.conciseSummary||""}
+Issues: ${(c.legalIssues||[]).join("; ")}
+Principles: ${(c.legalPrinciples||[]).join("; ")}
+Topics: ${(c.topics||[]).join(", ")}
+Outcome: ${c.outcome||""}`).join("\n\n---\n\n");
+
+    const prompt=`You are an expert Australian criminal law research assistant. Using ONLY the cases provided below, answer the following legal question comprehensively.
+
+For each relevant case you cite, reference it by its index number in square brackets like [0], [1] etc.
+Structure your answer with clear headings. Be precise and professional.
+At the end, list which case indices are most relevant.
+
+QUESTION: ${q}
+
+CASES IN DATABASE:
+${context}
+
+Answer in this format:
+## Answer
+[Your detailed answer citing cases by index]
+
+## Most Relevant Cases
+[List the index numbers and titles of the most relevant cases]`;
+
+    const response=await callGemini(prompt);
+
+    // Parse relevant case indices from response
+    const idxMatches=[...response.matchAll(/\[(\d+)\]/g)].map(m=>parseInt(m[1])).filter(i=>i>=0&&i<cases.length);
+    const uniqueIdxs=[...new Set(idxMatches)];
+
+    result.innerHTML=`
+      <div style="border:1px solid rgba(87,83,78,.4);background:rgba(28,25,23,.5);border-radius:4px;padding:16px;">
+        <p class="sl" style="margin-bottom:10px;">Gemini's Answer</p>
+        <div class="fb" style="color:#d6d3d1;font-size:13px;line-height:1.8;white-space:pre-line;">${esc(response)}</div>
+        ${uniqueIdxs.length>0?`
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(68,64,60,.4);">
+          <p class="sl" style="margin-bottom:8px;">Relevant Cases — Click to Open</p>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            ${uniqueIdxs.map(i=>{const c=cases[i];return c?`
+              <div class="search-result-card" onclick="openModal(${cases.indexOf(c)})">
+                <div style="display:flex;justify-content:space-between;gap:8px;">
+                  <span class="fd" style="color:#fde68a;font-size:13px;">${esc(c.title||"Untitled")}</span>
+                  <span class="fm" style="color:#57534e;font-size:10px;white-space:nowrap;">${esc(c.court||"")}</span>
+                </div>
+                <p class="fm" style="color:#78716c;font-size:10px;margin-top:3px;">${esc(c.citation||"")} · ${esc(c.decisionDate||"")}</p>
+                <p class="fb lc2" style="color:#78716c;font-size:12px;margin-top:5px;line-height:1.5;">${esc(c.conciseSummary||"")}</p>
+              </div>`:""}).join("")}
+          </div>
+        </div>`:""}
+      </div>`;
+    result.style.display="block";
+  }catch(e){
+    showError("Ask AI failed: "+e.message);
+  }finally{
+    btn.disabled=false;btn.textContent="Ask Gemini →";
   }
 }
 
-function renderSearchResult(r) {
-  const el = document.getElementById("search-result");
-  const filterRows = Object.entries(r.filters || {})
-    .filter(([,v]) => v && v.length > 0)
-    .map(([k,v]) => `
-      <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;">
-        <span class="font-mono" style="color:#78716c;font-size:11px;min-width:90px;">${k}:</span>
-        <div style="display:flex;flex-wrap:wrap;gap:4px;">${v.map(x => `<span class="tag tag-green">${x}</span>`).join("")}</div>
-      </div>`).join("");
-
-  el.innerHTML = `
-    <div style="border:1px solid rgba(87,83,78,0.5);background:rgba(28,25,23,0.5);border-radius:4px;padding:20px;">
-      <p class="font-display" style="color:#fcd34d;font-size:13px;margin-bottom:16px;">Query Interpretation</p>
-      <p class="section-label">Keywords</p>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;">
-        ${(r.keywords||[]).map(k => `<span class="tag tag-blue">${k}</span>`).join("")}
-      </div>
-      <p class="section-label">Vector Query</p>
-      <p class="font-body" style="color:#d6d3d1;font-size:13px;font-style:italic;background:rgba(41,37,36,0.6);border:1px solid #292524;border-radius:4px;padding:12px;margin-bottom:16px;">"${r.vectorQuery}"</p>
-      ${filterRows ? `<p class="section-label">Filters</p><div style="margin-bottom:16px;">${filterRows}</div>` : ""}
-      <p class="section-label">Developer Notes</p>
-      ${(r.notesForDeveloper||[]).map(n => `<p class="font-mono" style="color:#78716c;font-size:11px;background:rgba(28,25,23,0.8);border:1px solid #292524;border-radius:3px;padding:6px 10px;margin-bottom:4px;">${n}</p>`).join("")}
-    </div>`;
-  el.style.display = "block";
+// ── Global search + filters ─────────────────────────────────────
+function handleGlobalSearch(val){
+  globalSearchTerm=val.toLowerCase();
+  document.getElementById("clear-search").style.display=val?"block":"none";
+  applyFiltersAndSearch();
+}
+function clearGlobalSearch(){
+  document.getElementById("global-search").value="";
+  globalSearchTerm="";
+  document.getElementById("clear-search").style.display="none";
+  applyFiltersAndSearch();
 }
 
-// ── Render cases ───────────────────────────────────────────────
-function renderCases() {
-  const list = document.getElementById("cases-list");
-  const exportBtn = document.getElementById("export-btn");
+function applyFilter(type,value){
+  activeFilters[type]=value;
+  updateFilterBar();
+  applyFiltersAndSearch();
+}
+function removeFilter(type){
+  delete activeFilters[type];
+  updateFilterBar();
+  applyFiltersAndSearch();
+}
+function clearAllFilters(){
+  activeFilters={};
+  updateFilterBar();
+  applyFiltersAndSearch();
+}
+function updateFilterBar(){
+  const bar=document.getElementById("filter-bar");
+  const chips=document.getElementById("filter-chips");
+  const entries=Object.entries(activeFilters);
+  if(entries.length===0){bar.style.display="none";return;}
+  bar.style.display="block";
+  chips.innerHTML=entries.map(([type,val])=>`
+    <span class="filter-chip">
+      <span style="color:#92400e;font-size:9px;">${type}:</span> ${esc(val)}
+      <button onclick="removeFilter('${esc(type)}')">×</button>
+    </span>`).join("");
+}
 
-  if (cases.length === 0) {
-    list.innerHTML = `<div style="border:1px dashed rgba(41,37,36,0.6);border-radius:4px;padding:40px;text-align:center;">
-      <p class="font-display" style="color:#292524;font-size:15px;font-style:italic;">No cases in database yet.</p>
-      <p class="font-mono" style="color:#292524;font-size:11px;margin-top:8px;">Upload a document and click Analyse & Save →</p>
+function applyFiltersAndSearch(){
+  let result=[...cases];
+  // Apply tag filters
+  for(const[type,val]of Object.entries(activeFilters)){
+    if(type==="topic") result=result.filter(c=>(c.primaryTopic||"")==val||(c.topics||[]).includes(val));
+    else if(type==="offence") result=result.filter(c=>(c.offenceTypes||[]).includes(val));
+    else if(type==="area") result=result.filter(c=>(c.areaOfLaw||[]).includes(val));
+    else if(type==="court") result=result.filter(c=>(c.court||"")==val);
+  }
+  // Apply text search
+  if(globalSearchTerm){
+    result=result.filter(c=>{
+      const haystack=[c.title,c.citation,c.court,c.conciseSummary,c.detailedSummary,c.outcome,c.fullText,...(c.legalPrinciples||[]),...(c.legalIssues||[]),...(c.topics||[]),...(c.offenceTypes||[])].join(" ").toLowerCase();
+      return haystack.includes(globalSearchTerm);
+    });
+  }
+  filteredCases=result;
+  renderCases();
+  document.getElementById("case-count-badge").textContent=filteredCases.length!==cases.length?`${filteredCases.length} of ${cases.length}`:"";
+}
+
+// ── Render cases ────────────────────────────────────────────────
+function renderCases(){
+  const list=document.getElementById("cases-list");
+  const exportBtn=document.getElementById("export-btn");
+  const sort=document.getElementById("sort-select").value;
+  let sorted=[...filteredCases];
+  if(sort==="oldest") sorted.sort((a,b)=>(a.createdAt||"")<(b.createdAt||"")?-1:1);
+  else if(sort==="title") sorted.sort((a,b)=>(a.title||"").localeCompare(b.title||""));
+  else if(sort==="court") sorted.sort((a,b)=>(a.court||"").localeCompare(b.court||""));
+  else sorted.sort((a,b)=>(b.createdAt||"")>(a.createdAt||"")?1:-1);
+
+  exportBtn.style.display=cases.length>0?"inline":"none";
+  document.getElementById("stat-cases").textContent=cases.length;
+
+  if(sorted.length===0){
+    list.innerHTML=`<div style="border:1px dashed rgba(41,37,36,.5);border-radius:4px;padding:40px;text-align:center;">
+      <p class="fd" style="color:#292524;font-size:14px;font-style:italic;">${cases.length===0?"No cases yet. Upload a document to begin.":"No cases match your search."}</p>
     </div>`;
-    exportBtn.style.display = "none";
     return;
   }
 
-  exportBtn.style.display = "block";
-  list.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;max-height:calc(100vh - 220px);overflow-y:auto;scrollbar-width:thin;scrollbar-color:#57534e #1c1917;padding-right:4px;">
-    ${cases.map((doc, i) => `
-      <div class="card" onclick="openModal(${i})">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px;">
-          <h3 class="font-display" style="color:#fde68a;font-size:15px;line-height:1.3;">${esc(doc.title || "Untitled")}</h3>
-          <span class="font-mono" style="color:#57534e;font-size:10px;white-space:nowrap;margin-top:3px;">${esc(doc.court || "")}</span>
+  list.innerHTML=sorted.map((doc,i)=>{
+    const realIdx=cases.indexOf(doc);
+    return`<div class="case-card fade-in" onclick="openModal(${realIdx})" style="margin-bottom:8px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:5px;">
+        <h3 class="fd" style="color:#fde68a;font-size:14px;line-height:1.3;">${esc(doc.title||"Untitled")}</h3>
+        <span class="fm" style="color:#57534e;font-size:9px;white-space:nowrap;margin-top:3px;">${esc(doc.court||"")}</span>
+      </div>
+      <p class="fm" style="color:#57534e;font-size:10px;margin-bottom:7px;">${esc(doc.citation||"no citation")} · ${esc(doc.decisionDate||"")}</p>
+      ${doc.primaryTopic?`<div style="margin-bottom:8px;"><span class="topic-badge" onclick="event.stopPropagation();applyFilter('topic','${esc(doc.primaryTopic)}')">◈ ${esc(doc.primaryTopic)}</span></div>`:""}
+      <p class="fb lc2" style="color:#78716c;font-size:12px;line-height:1.6;margin-bottom:8px;">${esc(doc.conciseSummary||"")}</p>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;">
+        ${(doc.offenceTypes||[]).slice(0,2).map(t=>`<span class="tag tag-red" onclick="event.stopPropagation();applyFilter('offence','${esc(t)}')">${esc(t)}</span>`).join("")}
+        ${(doc.topics||[]).slice(0,2).map(t=>`<span class="tag tag-amber" onclick="event.stopPropagation();applyFilter('topic','${esc(t)}')">${esc(t)}</span>`).join("")}
+        ${(doc.areaOfLaw||[]).slice(0,1).map(t=>`<span class="tag tag-blue" onclick="event.stopPropagation();applyFilter('area','${esc(t)}')">${esc(t)}</span>`).join("")}
+      </div>
+    </div>`;
+  }).join("");
+}
+
+// ── Modal ───────────────────────────────────────────────────────
+function openModal(idx){
+  const doc=cases[idx];
+  if(!doc) return;
+  const panel=document.getElementById("modal-panel");
+
+  panel.innerHTML=`
+    <!-- Sticky header -->
+    <div style="position:sticky;top:0;background:rgba(14,13,11,.97);backdrop-filter:blur(8px);border-bottom:1px solid #1c1917;padding:18px 22px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+      <div style="flex:1;">
+        <h2 class="fd" style="color:#fde68a;font-size:18px;line-height:1.3;">${esc(doc.title||"Untitled")}</h2>
+        <p class="fm" style="color:#57534e;font-size:10px;margin-top:4px;">${esc(doc.citation||"")} · ${esc(doc.court||"")} · ${esc(doc.decisionDate||"")}</p>
+        ${doc._id?`<p class="fm" style="color:#065f46;font-size:9px;margin-top:2px;">✓ ${doc._id}</p>`:""}
+      </div>
+      <button onclick="closeModal()" style="background:none;border:none;color:#78716c;font-size:22px;cursor:pointer;line-height:1;flex-shrink:0;">×</button>
+    </div>
+
+    <div style="padding:22px;">
+
+      <!-- Topic editor -->
+      <div style="margin-bottom:20px;padding:12px;background:rgba(46,16,101,.12);border:1px solid rgba(109,40,217,.25);border-radius:3px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <div>
+            <p class="sl" style="margin-bottom:4px;">Primary Topic</p>
+            <div id="topic-display-${idx}">
+              ${doc.primaryTopic?`<span class="topic-badge">◈ ${esc(doc.primaryTopic)}</span>`:`<span class="fm" style="color:#44403c;font-size:11px;">Not assigned</span>`}
+            </div>
+          </div>
+          <button class="btn-ghost" onclick="editTopic(${idx})" id="topic-edit-btn-${idx}">✎ Edit</button>
         </div>
-        <p class="font-mono" style="color:#78716c;font-size:11px;margin-bottom:10px;">${esc(doc.citation || "")} · ${esc(doc.decisionDate || "")}</p>
-        <p class="font-body line-clamp-2" style="color:#78716c;font-size:13px;line-height:1.6;margin-bottom:10px;">${esc(doc.conciseSummary || "")}</p>
-        <div style="display:flex;flex-wrap:wrap;gap:5px;">
-          ${(doc.offenceTypes||[]).slice(0,3).map(t => `<span class="tag tag-red">${esc(t)}</span>`).join("")}
-          ${(doc.topics||[]).slice(0,3).map(t => `<span class="tag tag-amber">${esc(t)}</span>`).join("")}
+        <div id="topic-editor-${idx}" style="display:none;margin-top:10px;">
+          <input type="text" id="topic-edit-input-${idx}" class="inp" value="${esc(doc.primaryTopic||"")}" placeholder="e.g. Sentencing — Armed Robbery" list="topic-list" style="font-size:11px;padding:6px 10px;margin-bottom:6px;"/>
+          <div style="display:flex;gap:6px;">
+            <button class="btn-secondary" onclick="saveTopic(${idx})" style="flex:1;">Save</button>
+            <button class="btn-ghost" onclick="cancelEditTopic(${idx})">Cancel</button>
+          </div>
         </div>
-      </div>`).join("")}
-  </div>`;
+      </div>
+
+      <!-- Outcome -->
+      ${msec("Outcome",`<p class="fb" style="color:#fcd34d;font-size:13px;font-weight:600;">${esc(doc.outcome||"")}</p>`)}
+
+      <!-- Summary -->
+      ${msec("Concise Summary",`<p class="fb" style="color:#d6d3d1;font-size:13px;line-height:1.8;">${esc(doc.conciseSummary||"")}</p>`)}
+
+      <!-- Legal Issues -->
+      ${msec("Legal Issues",blist(doc.legalIssues))}
+
+      <!-- Legal Principles -->
+      ${msec("Legal Principles",blist(doc.legalPrinciples))}
+
+      <!-- Quotes -->
+      ${doc.quotes&&doc.quotes.length?msec("Key Quotes",doc.quotes.map(q=>`
+        <div style="border-left:2px solid #92400e;padding:4px 12px;margin-bottom:10px;">
+          <p class="fb" style="color:#d6d3d1;font-size:13px;font-style:italic;line-height:1.6;">"${esc(q.text||"")}"</p>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+            <p class="fm" style="color:#57534e;font-size:10px;">${esc(q.theme||"")}</p>
+            ${q.pageRef?`<span class="fm" style="color:#44403c;font-size:9px;padding:1px 6px;background:rgba(41,37,36,.5);border-radius:2px;">📄 ${esc(q.pageRef)}</span>`:""}
+          </div>
+        </div>`).join("")):""}
+
+      <!-- Relevance Notes -->
+      ${msec("Relevance Notes",blist(doc.relevanceNotes))}
+
+      <!-- Tags -->
+      ${msec("Tags",`<div style="display:flex;flex-wrap:wrap;gap:5px;">
+        ${(doc.offenceTypes||[]).map(t=>`<span class="tag tag-red" onclick="applyFilter('offence','${esc(t)}');closeModal()">${esc(t)}</span>`).join("")}
+        ${(doc.topics||[]).map(t=>`<span class="tag tag-amber" onclick="applyFilter('topic','${esc(t)}');closeModal()">${esc(t)}</span>`).join("")}
+        ${(doc.areaOfLaw||[]).map(t=>`<span class="tag tag-blue" onclick="applyFilter('area','${esc(t)}');closeModal()">${esc(t)}</span>`).join("")}
+      </div>`)}
+
+      <!-- Statutes -->
+      ${doc.statutesCited&&doc.statutesCited.length?msec("Statutes Cited",doc.statutesCited.map(s=>`<p class="fm" style="color:#78716c;font-size:11px;margin-bottom:3px;">${esc(s.act||"")} s ${esc(s.section||"")} (${esc(s.jurisdiction||"")})</p>`).join("")):""}
+
+      <!-- Cases cited -->
+      ${doc.casesCited&&doc.casesCited.length?msec("Cases Cited",doc.casesCited.map(c=>`
+        <div style="border-bottom:1px solid rgba(41,37,36,.4);padding:5px 0;" onclick="searchForCase('${esc(c.caseName||"")}')">
+          <p class="fm" style="color:#93c5fd;font-size:11px;cursor:pointer;text-decoration:underline dotted;">${esc(c.caseName||"")}</p>
+          <p class="fm" style="color:#44403c;font-size:10px;">${esc(c.citation||"")} · ${esc(c.court||"")}</p>
+        </div>`).join("")):""}
+
+      <!-- Detailed Summary -->
+      ${msec("Detailed Summary",`<p class="fb" style="color:#a8a29e;font-size:13px;line-height:1.8;white-space:pre-line;">${esc(doc.detailedSummary||"")}</p>`)}
+
+      <!-- Full text -->
+      ${doc.fullText?`<div style="margin-bottom:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <p class="sl" style="margin-bottom:0;">Full Extracted Text</p>
+          <button class="btn-ghost" onclick="toggleFullText(${idx})">Show / Hide</button>
+        </div>
+        <div id="fulltext-${idx}" style="display:none;">
+          <pre class="fm" style="background:#1c1917;border:1px solid #292524;border-radius:3px;padding:12px;font-size:10px;color:#57534e;overflow-x:auto;white-space:pre-wrap;max-height:300px;overflow-y:auto;">${esc(doc.fullText)}</pre>
+        </div>
+      </div>`:""}
+
+      <!-- Raw JSON -->
+      <div style="margin-bottom:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <p class="sl" style="margin-bottom:0;">Raw Firestore JSON</p>
+          <button class="btn-ghost" onclick="toggleRawJSON(${idx})">Show / Hide</button>
+        </div>
+        <div id="rawjson-${idx}" style="display:none;">
+          <pre class="fm" style="background:#1c1917;border:1px solid #292524;border-radius:3px;padding:12px;font-size:10px;color:#57534e;overflow-x:auto;white-space:pre-wrap;">${esc(JSON.stringify(doc,null,2))}</pre>
+        </div>
+      </div>
+
+    </div>`;
+
+  document.getElementById("modal").style.display="flex";
 }
 
-// ── Modal ──────────────────────────────────────────────────────
-function openModal(idx) {
-  const doc = cases[idx];
-  document.getElementById("modal-title").textContent = doc.title || "Untitled";
-  document.getElementById("modal-meta").textContent = [doc.citation, doc.court, doc.decisionDate].filter(Boolean).join(" · ");
-  document.getElementById("modal-fsid").textContent = doc._firestoreId ? "✓ Firestore ID: " + doc._firestoreId : "";
+function closeModal(){document.getElementById("modal").style.display="none";}
+function toggleFullText(idx){const el=document.getElementById("fulltext-"+idx);el.style.display=el.style.display==="none"?"block":"none";}
+function toggleRawJSON(idx){const el=document.getElementById("rawjson-"+idx);el.style.display=el.style.display==="none"?"block":"none";}
 
-  const body = document.getElementById("modal-body");
-  body.innerHTML = `
-    ${section("Outcome", `<p style="color:#fcd34d;font-size:13px;font-weight:600;">${esc(doc.outcome||"")}</p>`)}
-    ${section("Summary", `<p class="font-body" style="color:#d6d3d1;font-size:13px;line-height:1.7;">${esc(doc.conciseSummary||"")}</p>`)}
-    ${section("Legal Issues", bulletList(doc.legalIssues))}
-    ${section("Legal Principles", bulletList(doc.legalPrinciples))}
-    ${doc.quotes && doc.quotes.length ? section("Key Quotes", doc.quotes.map(q => `
-      <div style="border-left:2px solid #92400e;padding:4px 12px;margin-bottom:8px;">
-        <p class="font-body" style="color:#d6d3d1;font-size:13px;font-style:italic;">"${esc(q.text||"")}"</p>
-        <p class="font-mono" style="color:#57534e;font-size:10px;margin-top:4px;">${esc(q.theme||"")}</p>
-      </div>`).join("")) : ""}
-    ${section("Relevance Notes", bulletList(doc.relevanceNotes))}
-    ${section("Tags", `<div style="display:flex;flex-wrap:wrap;gap:6px;">
-      ${(doc.offenceTypes||[]).map(t=>`<span class="tag tag-red">${esc(t)}</span>`).join("")}
-      ${(doc.topics||[]).map(t=>`<span class="tag tag-amber">${esc(t)}</span>`).join("")}
-      ${(doc.areaOfLaw||[]).map(t=>`<span class="tag tag-blue">${esc(t)}</span>`).join("")}
-    </div>`)}
-    ${doc.statutesCited && doc.statutesCited.length ? section("Statutes Cited", doc.statutesCited.map(s =>
-      `<p class="font-mono" style="color:#78716c;font-size:11px;">${esc(s.act||"")} s ${esc(s.section||"")} (${esc(s.jurisdiction||"")})</p>`
-    ).join("")) : ""}
-    ${section("Detailed Summary", `<p class="font-body" style="color:#a8a29e;font-size:13px;line-height:1.8;white-space:pre-line;">${esc(doc.detailedSummary||"")}</p>`)}
-    ${section("Raw Firestore JSON", `<pre class="font-mono" style="background:#1c1917;border:1px solid #292524;border-radius:4px;padding:12px;font-size:11px;color:#78716c;overflow-x:auto;">${esc(JSON.stringify(doc, null, 2))}</pre>`)}
-  `;
-  document.getElementById("modal").style.display = "flex";
+// ── Topic editor ────────────────────────────────────────────────
+function editTopic(idx){
+  document.getElementById("topic-editor-"+idx).style.display="block";
+  document.getElementById("topic-edit-btn-"+idx).style.display="none";
+  document.getElementById("topic-edit-input-"+idx).focus();
+}
+function cancelEditTopic(idx){
+  document.getElementById("topic-editor-"+idx).style.display="none";
+  document.getElementById("topic-edit-btn-"+idx).style.display="inline";
+}
+async function saveTopic(idx){
+  const doc=cases[idx];
+  const newTopic=document.getElementById("topic-edit-input-"+idx).value.trim();
+  try{
+    await fsUpdate(doc._id,{primaryTopic:newTopic});
+    cases[idx].primaryTopic=newTopic;
+    // Update display
+    document.getElementById("topic-display-"+idx).innerHTML=newTopic?`<span class="topic-badge">◈ ${esc(newTopic)}</span>`:`<span class="fm" style="color:#44403c;font-size:11px;">Not assigned</span>`;
+    cancelEditTopic(idx);
+    updateTopicsList();
+    updateTopicDatalist();
+    renderCases();
+    showToast("Topic updated ✓","success");
+  }catch(e){showError("Failed to save topic: "+e.message);}
 }
 
-function closeModal(e) {
-  if (e.target === document.getElementById("modal")) {
-    document.getElementById("modal").style.display = "none";
-  }
+function searchForCase(name){
+  closeModal();
+  document.getElementById("global-search").value=name;
+  handleGlobalSearch(name);
 }
 
-function section(label, content) {
-  return `<div style="margin-bottom:24px;">
-    <p class="section-label">${label}</p>
-    ${content}
-  </div>`;
+// ── Topics panel ────────────────────────────────────────────────
+function updateTopicsList(){
+  const topicMap={};
+  cases.forEach(c=>{
+    const t=c.primaryTopic||"Unassigned";
+    topicMap[t]=(topicMap[t]||0)+1;
+  });
+  const el=document.getElementById("topics-list");
+  const sorted=Object.entries(topicMap).sort((a,b)=>b[1]-a[1]);
+  document.getElementById("stat-topics").textContent=sorted.length;
+  el.innerHTML=sorted.map(([topic,count])=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-bottom:1px solid rgba(28,25,23,.8);cursor:pointer;transition:background .2s;border-radius:2px;" onmouseover="this.style.background='rgba(41,37,36,.5)'" onmouseout="this.style.background=''" onclick="applyFilter('topic','${esc(topic)}');switchTab('ingest')">
+      <span class="fd" style="color:#d8b4fe;font-size:13px;">${esc(topic)}</span>
+      <span class="fm" style="color:#57534e;font-size:10px;">${count} case${count!==1?"s":""}</span>
+    </div>`).join("")||`<p class="fm" style="color:#44403c;font-size:11px;">No topics yet.</p>`;
 }
 
-function bulletList(arr) {
-  if (!arr || !arr.length) return '<p class="font-mono" style="color:#44403c;font-size:11px;">—</p>';
-  return `<ul style="list-style:none;padding:0;margin:0;">${arr.map(x =>
-    `<li style="display:flex;gap:8px;margin-bottom:5px;">
-      <span style="color:#92400e;margin-top:1px;">›</span>
-      <span class="font-body" style="color:#d6d3d1;font-size:13px;line-height:1.6;">${esc(x)}</span>
-    </li>`).join("")}</ul>`;
+function updateTopicDatalist(){
+  const topics=[...new Set(cases.map(c=>c.primaryTopic).filter(Boolean))];
+  document.getElementById("topic-list").innerHTML=topics.map(t=>`<option value="${esc(t)}">`).join("");
 }
 
-// ── Tab switching ──────────────────────────────────────────────
-function switchTab(tab) {
-  activeTab = tab;
-  document.getElementById("panel-ingest").style.display = tab === "ingest" ? "block" : "none";
-  document.getElementById("panel-search").style.display = tab === "search" ? "block" : "none";
-  document.getElementById("tab-ingest").className = "tab-btn" + (tab === "ingest" ? " active" : "");
-  document.getElementById("tab-search").className = "tab-btn" + (tab === "search" ? " active" : "");
+// ── Stats ───────────────────────────────────────────────────────
+function updateStats(){
+  const offences=new Set(cases.flatMap(c=>c.offenceTypes||[]));
+  const jurisdictions=new Set(cases.map(c=>c.jurisdiction).filter(Boolean));
+  document.getElementById("stat-offences").textContent=offences.size;
+  document.getElementById("stat-jurisdictions").textContent=jurisdictions.size;
+}
+
+// ── Tab switching ───────────────────────────────────────────────
+function switchTab(tab){
+  activeTab=tab;
+  ["ingest","ask","topics"].forEach(t=>{
+    document.getElementById("panel-"+t).style.display=t===tab?"block":"none";
+    document.getElementById("tab-"+t).className="tab"+(t===tab?" active":"");
+  });
   hideError();
+  if(tab==="topics") updateTopicsList();
 }
 
-// ── Export ─────────────────────────────────────────────────────
-function exportJSON() {
-  const blob = new Blob([JSON.stringify(cases, null, 2)], { type: "application/json" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "apm-legal-kb.json";
-  a.click();
+// ── Export ──────────────────────────────────────────────────────
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(cases,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="apm-legal-kb.json";a.click();
 }
 
-// ── Toast ──────────────────────────────────────────────────────
-function showToast(msg, type = "success") {
-  const el = document.getElementById("toast");
-  el.textContent = msg;
-  el.style.display = "block";
-  el.style.background = type === "success" ? "#1c1917" : "#450a0a";
-  el.style.border = type === "success" ? "1px solid rgba(180,83,9,0.5)" : "1px solid rgba(153,27,27,0.5)";
-  el.style.color = type === "success" ? "#fcd34d" : "#fca5a5";
-  el.classList.remove("toast-enter");
-  void el.offsetWidth;
-  el.classList.add("toast-enter");
-  clearTimeout(el._timer);
-  el._timer = setTimeout(() => { el.style.display = "none"; }, 4000);
+// ── Toast ───────────────────────────────────────────────────────
+function showToast(msg,type="success"){
+  const el=document.getElementById("toast");
+  el.textContent=msg;el.style.display="block";
+  el.style.background=type==="success"?"#1c1917":"#450a0a";
+  el.style.border=type==="success"?"1px solid rgba(180,83,9,.5)":"1px solid rgba(153,27,27,.5)";
+  el.style.color=type==="success"?"#fcd34d":"#fca5a5";
+  clearTimeout(el._t);el._t=setTimeout(()=>{el.style.display="none";},4000);
+}
+function showError(msg){document.getElementById("error-box").style.display="block";document.getElementById("error-text").textContent=msg;}
+function hideError(){document.getElementById("error-box").style.display="none";}
+
+// ── Helpers ─────────────────────────────────────────────────────
+function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
+function msec(label,content){return`<div style="margin-bottom:18px;"><p class="sl">${label}</p>${content}</div>`;}
+function blist(arr){
+  if(!arr||!arr.length) return`<p class="fm" style="color:#44403c;font-size:11px;">—</p>`;
+  return`<ul style="list-style:none;padding:0;margin:0;">${arr.map(x=>`<li style="display:flex;gap:8px;margin-bottom:5px;"><span style="color:#92400e;margin-top:2px;flex-shrink:0;">›</span><span class="fb" style="color:#d6d3d1;font-size:13px;line-height:1.6;">${esc(x)}</span></li>`).join("")}</ul>`;
 }
 
-function showError(msg) {
-  const el = document.getElementById("error-box");
-  document.getElementById("error-text").textContent = msg;
-  el.style.display = "block";
+// ── Responsive ──────────────────────────────────────────────────
+function checkLayout(){
+  const g=document.getElementById("main-grid");
+  if(!g) return;
+  g.style.gridTemplateColumns=window.innerWidth<860?"1fr":"340px 1fr";
 }
-function hideError() {
-  document.getElementById("error-box").style.display = "none";
-}
-
-// ── Escape HTML ────────────────────────────────────────────────
-function esc(str) {
-  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-}
-
-// ── Responsive grid ────────────────────────────────────────────
-function checkLayout() {
-  const grid = document.querySelector('[style*="grid-template-columns"]');
-  if (!grid) return;
-  if (window.innerWidth < 900) {
-    grid.style.gridTemplateColumns = "1fr";
-  } else {
-    grid.style.gridTemplateColumns = "1fr 1fr";
-  }
-}
-window.addEventListener("resize", checkLayout);
+window.addEventListener("resize",checkLayout);
 checkLayout();
 </script>
 </body>

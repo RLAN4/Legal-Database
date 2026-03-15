@@ -117,7 +117,7 @@ hr.d{border-color:rgba(68,64,60,.4);margin:0;}
       </div>
       <div>
         <h1 class="fd" style="color:#fde68a;font-size:17px;line-height:1;">APM Legal Database</h1>
-        <p class="fm" style="color:#44403c;font-size:9px;letter-spacing:.14em;margin-top:1px;">NSW CRIMINAL LAW · GEMINI AI</p>
+        <p class="fm" style="color:#44403c;font-size:9px;letter-spacing:.14em;margin-top:1px;">NSW CRIMINAL LAW · GEMINI 1.5</p>
       </div>
     </div>
     <!-- Search bar in header -->
@@ -261,7 +261,7 @@ const COLLECTION = "cases";
 const API_KEY_FS  = "AIzaSyAtRaBvfTbme3tm4bZfWbcV4FOBosdCtnc";
 const GEMINI_KEY  = "AIzaSyBba6mviFCcJXoUY67yo3CY3xrj_bCikDY";
 const FS_BASE     = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
-const GEMINI_URL  = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
+const GEMINI_URL  = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
 
 if(typeof pdfjsLib!=="undefined") pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 

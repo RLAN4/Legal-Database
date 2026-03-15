@@ -232,6 +232,11 @@ hr.d{border-color:rgba(68,64,60,.4);margin:0;}
         <span id="case-count-badge" class="fm" style="color:#44403c;font-size:10px;"></span>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
+        <div style="display:flex;border:1px solid rgba(87,83,78,.4);border-radius:3px;overflow:hidden;">
+          <button id="view-btn-topic" onclick="setView('topic')" style="padding:4px 10px;font-size:10px;font-family:'DM Mono',monospace;border:none;cursor:pointer;background:rgba(120,53,15,.4);color:#fcd34d;letter-spacing:.06em;" title="Group by topic">◈ Topics</button>
+          <button id="view-btn-table" onclick="setView('table')" style="padding:4px 10px;font-size:10px;font-family:'DM Mono',monospace;border:none;cursor:pointer;background:rgba(41,37,36,.4);color:#78716c;letter-spacing:.06em;" title="Table view">⊞ Table</button>
+          <button id="view-btn-card" onclick="setView('card')" style="padding:4px 10px;font-size:10px;font-family:'DM Mono',monospace;border:none;cursor:pointer;background:rgba(41,37,36,.4);color:#78716c;letter-spacing:.06em;" title="Card view">▤ Cards</button>
+        </div>
         <select id="sort-select" class="inp" style="width:auto;padding:4px 8px;font-size:10px;" onchange="renderCases()">
           <option value="newest">Newest first</option>
           <option value="oldest">Oldest first</option>
@@ -307,6 +312,10 @@ async function fsUpdate(id,data){
   const r=await fetch(`${FS_BASE}/${COLLECTION}/${id}?${fieldPaths}&key=${API_KEY_FS}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({fields})});
   if(!r.ok) throw new Error(await r.text());
 }
+async function fsDelete(id){
+  const r=await fetch(`${FS_BASE}/${COLLECTION}/${id}?key=${API_KEY_FS}`,{method:"DELETE"});
+  if(!r.ok) throw new Error(await r.text());
+}
 async function fsLoad(){
   const r=await fetch(`${FS_BASE}/${COLLECTION}?key=${API_KEY_FS}&pageSize=200`);
   if(!r.ok) return[];
@@ -321,6 +330,7 @@ async function fsLoad(){
     cases.sort((a,b)=>((b.createdAt||"")>(a.createdAt||"")?1:-1));
     filteredCases=[...cases];
     setDbStatus(true);
+    setView("topic");
     renderCases();
     updateStats();
     updateTopicsList();
@@ -619,33 +629,183 @@ function applyFiltersAndSearch(){
   document.getElementById("case-count-badge").textContent=filteredCases.length!==cases.length?`${filteredCases.length} of ${cases.length}`:"";
 }
 
+// ── View mode ───────────────────────────────────────────────────
+let viewMode="topic"; // topic | table | card
+let collapsedTopics={};
+
+function setView(mode){
+  viewMode=mode;
+  ["topic","table","card"].forEach(m=>{
+    const btn=document.getElementById("view-btn-"+m);
+    if(!btn) return;
+    btn.style.background=m===mode?"rgba(120,53,15,.4)":"rgba(41,37,36,.4)";
+    btn.style.color=m===mode?"#fcd34d":"#78716c";
+  });
+  // Sort only relevant for card/table
+  document.getElementById("sort-select").style.display=mode==="topic"?"none":"block";
+  renderCases();
+}
+
 // ── Render cases ────────────────────────────────────────────────
 function renderCases(){
   const list=document.getElementById("cases-list");
   const exportBtn=document.getElementById("export-btn");
   const sort=document.getElementById("sort-select").value;
-  let sorted=[...filteredCases];
-  if(sort==="oldest") sorted.sort((a,b)=>(a.createdAt||"")<(b.createdAt||"")?-1:1);
-  else if(sort==="title") sorted.sort((a,b)=>(a.title||"").localeCompare(b.title||""));
-  else if(sort==="court") sorted.sort((a,b)=>(a.court||"").localeCompare(b.court||""));
-  else sorted.sort((a,b)=>(b.createdAt||"")>(a.createdAt||"")?1:-1);
-
   exportBtn.style.display=cases.length>0?"inline":"none";
   document.getElementById("stat-cases").textContent=cases.length;
 
-  if(sorted.length===0){
+  if(filteredCases.length===0){
     list.innerHTML=`<div style="border:1px dashed rgba(41,37,36,.5);border-radius:4px;padding:40px;text-align:center;">
       <p class="fd" style="color:#292524;font-size:14px;font-style:italic;">${cases.length===0?"No cases yet. Upload a document to begin.":"No cases match your search."}</p>
     </div>`;
     return;
   }
 
-  list.innerHTML=sorted.map((doc,i)=>{
+  if(viewMode==="topic") renderTopicView(list);
+  else if(viewMode==="table") renderTableView(list,sort);
+  else renderCardView(list,sort);
+}
+
+function sortedCases(sort){
+  let s=[...filteredCases];
+  if(sort==="oldest") s.sort((a,b)=>(a.createdAt||"")<(b.createdAt||"")?-1:1);
+  else if(sort==="title") s.sort((a,b)=>(a.title||"").localeCompare(b.title||""));
+  else if(sort==="court") s.sort((a,b)=>(a.court||"").localeCompare(b.court||""));
+  else s.sort((a,b)=>(b.createdAt||"")>(a.createdAt||"")?1:-1);
+  return s;
+}
+
+// ── Topic grouped view ──────────────────────────────────────────
+function renderTopicView(list){
+  // Group by primaryTopic
+  const groups={};
+  filteredCases.forEach(doc=>{
+    const t=doc.primaryTopic||"⚠ Unassigned";
+    if(!groups[t]) groups[t]=[];
+    groups[t].push(doc);
+  });
+  // Sort groups alphabetically, Unassigned last
+  const sortedGroups=Object.entries(groups).sort(([a],[b])=>{
+    if(a.startsWith("⚠")) return 1;
+    if(b.startsWith("⚠")) return -1;
+    return a.localeCompare(b);
+  });
+
+  list.innerHTML=sortedGroups.map(([topic,docs])=>{
+    const isCollapsed=!!collapsedTopics[topic];
+    const safeId="grp-"+btoa(encodeURIComponent(topic)).replace(/[^a-zA-Z0-9]/g,"").slice(0,20);
+    return`<div style="margin-bottom:6px;border:1px solid rgba(68,64,60,.4);border-radius:4px;overflow:hidden;">
+      <!-- Topic header -->
+      <div onclick="toggleGroup('${safeId}','${esc(topic)}')" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(28,25,23,.8);cursor:pointer;transition:background .2s;user-select:none;" onmouseover="this.style.background='rgba(41,37,36,.9)'" onmouseout="this.style.background='rgba(28,25,23,.8)'">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="color:#a78bfa;font-size:13px;transition:transform .2s;display:inline-block;" id="chevron-${safeId}">${isCollapsed?"▶":"▼"}</span>
+          <span class="fd" style="color:#d8b4fe;font-size:14px;">${esc(topic)}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="fm" style="color:#57534e;font-size:10px;">${docs.length} case${docs.length!==1?"s":""}</span>
+          <button onclick="event.stopPropagation();applyFilter('topic','${esc(topic)}')" class="btn-ghost" style="font-size:9px;padding:2px 6px;border:1px solid rgba(87,83,78,.3);border-radius:2px;" title="Filter to this topic">Filter</button>
+        </div>
+      </div>
+      <!-- Cases in topic -->
+      <div id="${safeId}" style="display:${isCollapsed?"none":"block"};">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="background:rgba(12,11,9,.6);">
+              <th class="fm" style="text-align:left;padding:6px 14px;font-size:9px;color:#44403c;font-weight:400;letter-spacing:.1em;border-bottom:1px solid rgba(41,37,36,.6);">TITLE</th>
+              <th class="fm" style="text-align:left;padding:6px 8px;font-size:9px;color:#44403c;font-weight:400;letter-spacing:.1em;border-bottom:1px solid rgba(41,37,36,.6);white-space:nowrap;">COURT</th>
+              <th class="fm" style="text-align:left;padding:6px 8px;font-size:9px;color:#44403c;font-weight:400;letter-spacing:.1em;border-bottom:1px solid rgba(41,37,36,.6);white-space:nowrap;">DATE</th>
+              <th class="fm" style="text-align:left;padding:6px 8px;font-size:9px;color:#44403c;font-weight:400;letter-spacing:.1em;border-bottom:1px solid rgba(41,37,36,.6);">OUTCOME</th>
+              <th style="border-bottom:1px solid rgba(41,37,36,.6);width:30px;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${docs.map(doc=>{
+              const realIdx=cases.indexOf(doc);
+              return`<tr onclick="openModal(${realIdx})" style="cursor:pointer;transition:background .15s;border-bottom:1px solid rgba(28,25,23,.6);" onmouseover="this.style.background='rgba(41,37,36,.5)'" onmouseout="this.style.background=''">
+                <td style="padding:8px 14px;">
+                  <p class="fd" style="color:#fde68a;font-size:13px;line-height:1.3;">${esc(doc.title||"Untitled")}</p>
+                  <p class="fm" style="color:#44403c;font-size:9px;margin-top:2px;">${esc(doc.citation||"")}</p>
+                </td>
+                <td style="padding:8px;" class="fm"><span style="color:#78716c;font-size:10px;white-space:nowrap;">${esc(doc.court||"—")}</span></td>
+                <td style="padding:8px;" class="fm"><span style="color:#78716c;font-size:10px;white-space:nowrap;">${esc((doc.decisionDate||"").slice(0,10)||"—")}</span></td>
+                <td style="padding:8px;"><p class="fb lc2" style="color:#57534e;font-size:11px;line-height:1.4;max-width:280px;">${esc(doc.outcome||"")}</p></td>
+                <td style="padding:8px;text-align:center;">
+                  <button onclick="event.stopPropagation();deleteCase(${realIdx})" style="background:none;border:none;color:#292524;cursor:pointer;font-size:12px;padding:2px;transition:color .2s;" onmouseover="this.style.color='#fca5a5'" onmouseout="this.style.color='#292524'" title="Delete">✕</button>
+                </td>
+              </tr>`;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function toggleGroup(safeId,topic){
+  const el=document.getElementById(safeId);
+  const ch=document.getElementById("chevron-"+safeId);
+  if(!el) return;
+  const isNowCollapsed=el.style.display!=="none";
+  collapsedTopics[topic]=isNowCollapsed;
+  el.style.display=isNowCollapsed?"none":"block";
+  if(ch) ch.textContent=isNowCollapsed?"▶":"▼";
+}
+
+// ── Table view ──────────────────────────────────────────────────
+function renderTableView(list,sort){
+  const s=sortedCases(sort);
+  list.innerHTML=`<div style="border:1px solid rgba(68,64,60,.4);border-radius:4px;overflow:hidden;">
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="background:rgba(12,11,9,.8);">
+          <th class="fm" style="text-align:left;padding:8px 14px;font-size:9px;color:#78716c;font-weight:400;letter-spacing:.1em;">TITLE</th>
+          <th class="fm" style="text-align:left;padding:8px;font-size:9px;color:#78716c;font-weight:400;letter-spacing:.1em;">TOPIC</th>
+          <th class="fm" style="text-align:left;padding:8px;font-size:9px;color:#78716c;font-weight:400;letter-spacing:.1em;white-space:nowrap;">COURT</th>
+          <th class="fm" style="text-align:left;padding:8px;font-size:9px;color:#78716c;font-weight:400;letter-spacing:.1em;white-space:nowrap;">DATE</th>
+          <th class="fm" style="text-align:left;padding:8px;font-size:9px;color:#78716c;font-weight:400;letter-spacing:.1em;">OFFENCES</th>
+          <th style="width:30px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${s.map(doc=>{
+          const realIdx=cases.indexOf(doc);
+          return`<tr onclick="openModal(${realIdx})" style="cursor:pointer;border-bottom:1px solid rgba(28,25,23,.8);transition:background .15s;" onmouseover="this.style.background='rgba(41,37,36,.5)'" onmouseout="this.style.background=''">
+            <td style="padding:9px 14px;">
+              <p class="fd" style="color:#fde68a;font-size:13px;line-height:1.2;">${esc(doc.title||"Untitled")}</p>
+              <p class="fm" style="color:#44403c;font-size:9px;margin-top:2px;">${esc(doc.citation||"")}</p>
+            </td>
+            <td style="padding:9px 8px;">
+              ${doc.primaryTopic?`<span style="color:#d8b4fe;font-size:10px;font-family:'DM Mono',monospace;">${esc(doc.primaryTopic)}</span>`:`<span style="color:#292524;font-size:10px;">—</span>`}
+            </td>
+            <td style="padding:9px 8px;" class="fm"><span style="color:#78716c;font-size:10px;white-space:nowrap;">${esc(doc.court||"—")}</span></td>
+            <td style="padding:9px 8px;" class="fm"><span style="color:#78716c;font-size:10px;white-space:nowrap;">${esc((doc.decisionDate||"").slice(0,10)||"—")}</span></td>
+            <td style="padding:9px 8px;">
+              <div style="display:flex;flex-wrap:wrap;gap:3px;">
+                ${(doc.offenceTypes||[]).slice(0,2).map(t=>`<span class="tag tag-red" style="font-size:9px;padding:1px 5px;" onclick="event.stopPropagation();applyFilter('offence','${esc(t)}')">${esc(t)}</span>`).join("")}
+              </div>
+            </td>
+            <td style="padding:9px 8px;text-align:center;">
+              <button onclick="event.stopPropagation();deleteCase(${realIdx})" style="background:none;border:none;color:#292524;cursor:pointer;font-size:12px;padding:2px;transition:color .2s;" onmouseover="this.style.color='#fca5a5'" onmouseout="this.style.color='#292524'" title="Delete">✕</button>
+            </td>
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+// ── Card view ───────────────────────────────────────────────────
+function renderCardView(list,sort){
+  const s=sortedCases(sort);
+  list.innerHTML=s.map(doc=>{
     const realIdx=cases.indexOf(doc);
     return`<div class="case-card fade-in" onclick="openModal(${realIdx})" style="margin-bottom:8px;">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:5px;">
         <h3 class="fd" style="color:#fde68a;font-size:14px;line-height:1.3;">${esc(doc.title||"Untitled")}</h3>
-        <span class="fm" style="color:#57534e;font-size:9px;white-space:nowrap;margin-top:3px;">${esc(doc.court||"")}</span>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+          <span class="fm" style="color:#57534e;font-size:9px;white-space:nowrap;">${esc(doc.court||"")}</span>
+          <button onclick="event.stopPropagation();deleteCase(${realIdx})" style="background:none;border:none;color:#44403c;cursor:pointer;font-size:12px;padding:0 2px;line-height:1;transition:color .2s;" onmouseover="this.style.color='#fca5a5'" onmouseout="this.style.color='#44403c'" title="Delete">✕</button>
+        </div>
       </div>
       <p class="fm" style="color:#57534e;font-size:10px;margin-bottom:7px;">${esc(doc.citation||"no citation")} · ${esc(doc.decisionDate||"")}</p>
       ${doc.primaryTopic?`<div style="margin-bottom:8px;"><span class="topic-badge" onclick="event.stopPropagation();applyFilter('topic','${esc(doc.primaryTopic)}')">◈ ${esc(doc.primaryTopic)}</span></div>`:""}
@@ -673,7 +833,10 @@ function openModal(idx){
         <p class="fm" style="color:#57534e;font-size:10px;margin-top:4px;">${esc(doc.citation||"")} · ${esc(doc.court||"")} · ${esc(doc.decisionDate||"")}</p>
         ${doc._id?`<p class="fm" style="color:#065f46;font-size:9px;margin-top:2px;">✓ ${doc._id}</p>`:""}
       </div>
-      <button onclick="closeModal()" style="background:none;border:none;color:#78716c;font-size:22px;cursor:pointer;line-height:1;flex-shrink:0;">×</button>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+        <button onclick="deleteCase(${idx})" style="background:rgba(127,29,29,.2);border:1px solid rgba(185,28,28,.3);color:#fca5a5;font-size:10px;font-family:'DM Mono',monospace;padding:5px 10px;border-radius:2px;cursor:pointer;letter-spacing:.08em;transition:all .2s;" onmouseover="this.style.background='rgba(153,27,27,.4)'" onmouseout="this.style.background='rgba(127,29,29,.2)'">✕ Delete</button>
+        <button onclick="closeModal()" style="background:none;border:none;color:#78716c;font-size:22px;cursor:pointer;line-height:1;">×</button>
+      </div>
     </div>
 
     <div style="padding:22px;">
@@ -775,6 +938,22 @@ function toggleFullText(idx){const el=document.getElementById("fulltext-"+idx);e
 function toggleRawJSON(idx){const el=document.getElementById("rawjson-"+idx);el.style.display=el.style.display==="none"?"block":"none";}
 
 // ── Topic editor ────────────────────────────────────────────────
+async function deleteCase(idx){
+  const doc=cases[idx];
+  if(!doc) return;
+  if(!confirm(`Delete "${doc.title||"this case"}"?\n\nThis cannot be undone.`)) return;
+  try{
+    await fsDelete(doc._id);
+    cases.splice(idx,1);
+    closeModal();
+    applyFiltersAndSearch();
+    updateStats();
+    updateTopicsList();
+    updateTopicDatalist();
+    setDbStatus(true);
+    showToast("Case deleted","success");
+  }catch(e){showError("Delete failed: "+e.message);}
+}
 function editTopic(idx){
   document.getElementById("topic-editor-"+idx).style.display="block";
   document.getElementById("topic-edit-btn-"+idx).style.display="none";
